@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck setup.sh
+        run: shellcheck setup.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        # ruff is pinned: its rule defaults evolve between releases, and
+        # ruff.toml documents the exact set we enforce.
+        run: pip install ruff==0.16.10 pytest
+
+      - name: ruff
+        run: ruff check .
+
+      - name: pytest
+        run: pytest -q
