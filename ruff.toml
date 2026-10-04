@@ -1,0 +1,7 @@
+[lint]
+# Explicit rule set so CI and local runs agree even when ruff ships new
+# defaults in a later release. CI pins ruff to the same version.
+# BLE (blind except) is deliberately excluded: the HTTP handler and the MCP
+# bridge must answer with an error instead of dying on an unexpected
+# exception — each catch site documents why.
+select = ["E4", "E7", "E9", "F", "I", "PLW", "FURB", "EXE"]

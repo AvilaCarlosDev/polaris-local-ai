@@ -12,8 +12,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR="/opt"
-IA_DIR="/opt/ia"
 MODELS_DIR="/opt/ia/models"
 LLAMA_DIR="/opt/llama.cpp"
 SD_DIR="/opt/stable-diffusion.cpp"
@@ -175,8 +173,11 @@ fi
 hdr "Systemd units"
 if [[ $CHECK_ONLY -eq 1 ]]; then
   for u in "$ROOT"/systemd/*.service; do
-    [[ -e "$UNIT_DIR/$(basename "$u")" ]] && ok "$(basename "$u") installed" \
-      || warn "$(basename "$u") not installed"
+    if [[ -e "$UNIT_DIR/$(basename "$u")" ]]; then
+      ok "$(basename "$u") installed"
+    else
+      warn "$(basename "$u") not installed"
+    fi
   done
 else
   for u in "$ROOT"/systemd/*.service; do

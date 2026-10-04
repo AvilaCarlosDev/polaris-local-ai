@@ -5,7 +5,15 @@ Lee el campo "model" de cada request; si no es el que ya esta cargado, recarga
 el server con el pedido y recien entonces reenvia. Si ya esta cargado, reenvia
 directo (overhead ~0).
 """
-import json, os, re, subprocess, sys, threading, time, urllib.error, urllib.request
+import json
+import os
+import re
+import subprocess
+import sys
+import threading
+import time
+import urllib.error
+import urllib.request
 
 UPSTREAM = "http://127.0.0.1:8080"
 
@@ -13,7 +21,6 @@ UPSTREAM = "http://127.0.0.1:8080"
 def _load_api_key():
     """La key NO va hardcodeada: leerla de un archivo 600 evita que al desplegar
     el codigo del router se pise una key ya rotada (me paso, genero 401)."""
-    import base64
     env = os.environ.get("IA_API_KEY")
     if env:
         return env
@@ -119,7 +126,7 @@ def resolve(name):
     base = re.sub(r"^/.*/", "", base)
     if base in MODELS:
         return base
-    stem = base[:-5] if base.endswith(".gguf") else base
+    stem = base.removesuffix(".gguf")
     if stem in MODELS:
         return stem
     return ALIASES.get(base) or ALIASES.get(stem) or "qwen2.5-7b-instruct-q4_k_m"
@@ -139,14 +146,15 @@ def sd_ensure(want):
     en caliente: hay que apagar el otro antes, porque comparten puerto."""
     for key, cfg in IMG_MODELS.items():
         active = subprocess.run(["systemctl", "is-active", cfg["unit"]],
-                                capture_output=True, text=True).stdout.strip() == "active"
+                                capture_output=True, text=True,
+                                check=False).stdout.strip() == "active"
         if key == want:
             if not active:
                 subprocess.run(["systemctl", "start", cfg["unit"]],
-                               capture_output=True)
+                               capture_output=True, check=False)
         elif active:
             subprocess.run(["systemctl", "stop", cfg["unit"]],
-                           capture_output=True)
+                           capture_output=True, check=False)
     for _ in range(90):
         if sd_up():
             return True
@@ -160,9 +168,11 @@ def generate_image(prompt, steps=20, width=512, height=512, name=None,
     en el proximo request (ensure() valida /health, asi que se autorepara)."""
     want = img_model(model)
     was_up = subprocess.run(["systemctl", "is-active", "llama-server"],
-                            capture_output=True, text=True).stdout.strip() == "active"
+                            capture_output=True, text=True,
+                            check=False).stdout.strip() == "active"
     if was_up:
-        subprocess.run(["systemctl", "stop", "llama-server"], capture_output=True)
+        subprocess.run(["systemctl", "stop", "llama-server"],
+                       capture_output=True, check=False)
         time.sleep(2)
     try:
         if not sd_ensure(want):
@@ -192,7 +202,8 @@ def generate_image(prompt, steps=20, width=512, height=512, name=None,
         return path, time.time() - t0, len(raw)
     finally:
         if was_up:
-            subprocess.run(["systemctl", "start", "llama-server"], capture_output=True)
+            subprocess.run(["systemctl", "start", "llama-server"],
+                           capture_output=True, check=False)
 
 
 def current():
@@ -401,7 +412,7 @@ def main():
                         break
             prompt = re.sub(r"^(dibuj[aá]|gener[aá]|cre[aá]|hac[eé]|pint[aá]|"
                             r"dame|generame|haceme)\s+(una\s+|un\s+)?", "",
-                            prompt, flags=re.I).strip(" .:\n\"'")
+                            prompt, flags=re.IGNORECASE).strip(" .:\n\"'")
             if not prompt:
                 self._json(400, {"error": {"message": "prompt vacio para generar imagen"}})
                 return

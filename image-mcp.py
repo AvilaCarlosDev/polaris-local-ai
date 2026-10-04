@@ -8,7 +8,14 @@ autorrepara en el proximo request porque su ensure() valida /health.
 Corre DENTRO del LXC (necesita systemctl para la VRAM). opencode lo invoca por
 ssh, igual que el MCP de Engram.
 """
-import base64, json, os, pathlib, socket, subprocess, sys, time, urllib.request
+import base64
+import json
+import pathlib
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
 
 SD = "http://127.0.0.1:8082"
 OUT = pathlib.Path("/opt/ia/images")
@@ -61,14 +68,17 @@ def sd_up():
 
 def generate(prompt, steps, width, height, name, return_image):
     was_up = subprocess.run(["systemctl", "is-active", "llama-server"],
-                            capture_output=True, text=True).stdout.strip()
+                            capture_output=True, text=True,
+                            check=False).stdout.strip()
     if was_up == "active":
         log("liberando VRAM")
-        subprocess.run(["systemctl", "stop", "llama-server"], capture_output=True)
+        subprocess.run(["systemctl", "stop", "llama-server"],
+                       capture_output=True, check=False)
         time.sleep(2)
     try:
         if not sd_up():
-            subprocess.run(["systemctl", "start", "sd-server"], capture_output=True)
+            subprocess.run(["systemctl", "start", "sd-server"],
+                           capture_output=True, check=False)
             for _ in range(60):
                 if sd_up():
                     break
@@ -108,7 +118,8 @@ def generate(prompt, steps, width, height, name, return_image):
     finally:
         if was_up == "active":
             log("restaurando LLM")
-            subprocess.run(["systemctl", "start", "llama-server"], capture_output=True)
+            subprocess.run(["systemctl", "start", "llama-server"],
+                           capture_output=True, check=False)
 
 
 def respond(obj):
@@ -117,8 +128,8 @@ def respond(obj):
 
 
 def main():
-    for line in sys.stdin:
-        line = line.strip()
+    for raw in sys.stdin:
+        line = raw.strip()
         if not line:
             continue
         try:
