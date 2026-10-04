@@ -1,8 +1,12 @@
 # polaris-local-ai
 
+[**English**](README.md) · [Español](README.es.md)
+
 **A full local AI stack — text, vision and image generation — on an AMD Radeon
 RX 580 2048SP (8 GB VRAM) with 32 GB of RAM.** No cloud, no API bills. It also
 serves as the inference engine for an AI coding/assistant agent (Hermes Agent).
+
+![The stack answering a curl chat completion and generating an image with SD 3.5, both through the local OpenAI-compatible endpoint](docs/assets/polaris-local-ai-demo.png)
 
 > **Inspired by [Strata](https://github.com/Niko1221/Strata).**
 > Strata proved that a serious local inference stack can be packaged so a normal
@@ -22,7 +26,7 @@ still a very common card — is out of scope for it.
 
 This stack does not care. It runs over **Vulkan through Mesa's RADV driver**,
 which supports Polaris perfectly, and leans on **32 GB of system RAM** for the
-models that do not fit in 8 GB of VRAM. The result: seven text/vision models
+models that do not fit in 8 GB of VRAM. The result: six text/vision models
 and two image models, all reachable through a single OpenAI-compatible endpoint.
 
 ## What you get
@@ -32,7 +36,7 @@ and two image models, all reachable through a single OpenAI-compatible endpoint.
 | **Text** | 6 models, from a 1.5 B coder up to a 30 B MoE, swapped on demand |
 | **Vision** | Qwen2.5-VL 3 B with its mmproj projector |
 | **Images** | SD 3.5 Medium and SD 1.5 through stable-diffusion.cpp |
-| **API** | One OpenAI-compatible endpoint, one API key, 7 model ids |
+| **API** | One OpenAI-compatible endpoint, one API key, 6 text/vision ids + image generation |
 | **Agent** | Works as the backend engine for Hermes Agent, with MCP tools |
 | **Footprint** | Runs in a Debian LXC on a Proxmox host, or on bare metal |
 
