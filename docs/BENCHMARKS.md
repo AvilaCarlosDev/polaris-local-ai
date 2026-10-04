@@ -6,45 +6,95 @@ All numbers below were measured on the machine described in
 
 Nothing here is quoted from a vendor or another project.
 
+> **Just trying it out?** Read [EXPECTATIONS.md](EXPECTATIONS.md) first — it
+> turns these tables into plain expectations for your first hour of use.
+
 ## Method
 
 **Text.** `POST /v1/chat/completions`, `temperature: 0`, `max_tokens: 300`,
-a fixed ~250-word prompt, best of two runs.
+one fixed prompt (~60 tokens in, ≈300 tokens generated).
 
-> **tok/s = `completion_tokens` / total request time**, so it includes the
-> prompt prefill. This is the honest end-to-end number a client sees. It is
-> *not* pure decode speed and will read lower than a streaming decode-only
-> measurement.
+Every model is measured in **two states**, with an identical request in each:
 
-**Load** is the time of the *first* request to a model after another model was
-in use: it includes the router restarting llama-server with the new weights.
-Subsequent requests to the same model do not pay it.
+- **Cold** — first request after a different model was in use. The router
+  restarts llama-server with the new weights, so wall time includes the swap.
+- **Warm** — the same request while the model is still resident.
+
+`tok/s` is decode throughput from llama-server's own `print_timing` —
+generation only. Wall time additionally includes prompt pre-fill, the model
+swap and network.
+
+> These are **raw API** numbers, not what a person experiences through an
+> agent — see
+> [Latency through an agent](#latency-through-an-agent-what-you-actually-feel),
+> where the prompt is 20,109 tokens.
+
+**Agent end-to-end.** `hermes chat -Q -m <model> -q "..."`, wall clock from
+process start to final line. This measures the whole chain: Hermes CLI boot,
+prompt assembly, router, model and reply.
 
 **Images** are end-to-end wall time for a 512×512 PNG, from CLI invocation to
 file on disk.
 
 ## Text models
 
-| Model | tok/s | Generation | Load / swap |
-|---|---:|---:|---:|
-| `qwen2.5-coder-1.5b-instruct-q4_k_m` | **96.24** | 2.6 s | 6.7 s |
-| `qwen2.5-vl-3b-instruct-q4_k_m` | **65.85** | 4.6 s | 10.7 s |
-| `qwen2.5-7b-instruct-q4_k_m` | **33.82** | 8.9 s | 16.0 s |
-| `qwen2.5-coder-7b-instruct-q4_k_m` | **33.40** | 8.4 s | 15.8 s |
-| `ornith-1.5-9b-q4_k_m` | **27.31** | 11.0 s | 16.4 s |
-| `qwen3-30b-a3b-instruct-2507-q4_k_m` | **21.77** | 13.8 s | 35.3 s |
+Measured with the cold/warm method below: **warm** is a request while the model
+is already resident, **cold** is the same request right after a swap.
+
+| Model | tok/s | Warm (loaded) | Cold (after swap) | Swap cost |
+|---|---:|---:|---:|---:|
+| `qwen2.5-coder-1.5b-instruct-q4_k_m` | **99.2** | **3.1 s** | 11.0 s | 7.9 s |
+| `qwen2.5-vl-3b-instruct-q4_k_m` | **66.4** | **4.4 s** | 14.9 s | 10.2 s |
+| `qwen2.5-7b-instruct-q4_k_m` | **34.2** | **8.8 s** | 24.3 s | 15.2 s |
+| `qwen2.5-coder-7b-instruct-q4_k_m` | **34.3** | **8.8 s** | 24.4 s | 15.4 s |
+| `ornith-1.5-9b-q4_k_m` | **28.0** | **10.9 s** | 26.3 s | 15.2 s |
+| `qwen3-30b-a3b-instruct-2507-q4_k_m` | **21.3** | **14.1 s** | 55.0 s | 38.5 s |
 
 What the table says:
 
-- **The 1.5 B coder is the speed model.** 96 tok/s is well past the point where
-  text appears faster than you can read it.
-- **The 30 B MoE works, and 21.77 tok/s is usable**, but it is the slowest of
+- **The 1.5 B coder is the speed model.** 99 tok/s is well past the point where
+  text appears faster than you can read it — 300 tokens in 3.1 s.
+- **The 30 B MoE works, and 21.3 tok/s is usable**, but it is the slowest of
   the set. With 18.6 GB of weights against 8 GB of VRAM, most of it is being
   served from system RAM. That is the trade-off for running a 30 B model on
-  this card at all — and 32 GB of RAM is what makes the trade possible.
-- **Model swaps are the real latency.** Asking for a model nobody has used
-  recently costs 7–35 s before a single token is produced. If a workflow needs
-  to hop between models constantly, pin one.
+  this card at all — and 32 GB of RAM is what makes the trade possible. Its
+  **38.5 s swap is also the worst in the set**; pin it if you use it often.
+- **Swapping costs 7.9–38.5 s, i.e. it doubles or triples the answer time.**
+  If a workflow hops between models constantly, it pays that on every hop.
+- **None of this is the agent's bottleneck.** Through Hermes the first message
+  costs ~161 s because of a 20 K-token prompt, and later turns still cost
+  ~21–25 s of fixed CLI overhead. See
+  [Latency through an agent](#latency-through-an-agent-what-you-actually-feel).
+
+## Cold vs warm — the same model, two states
+
+The table above mixes two different situations, so here is how each number was
+produced. For every model: one request **immediately after a swap**, then an
+**identical** request while it was still resident. Same prompt,
+`temperature: 0`, `max_tokens: 300` (≈300 tokens generated in both cases).
+
+Decomposition of one row (`qwen2.5-7b`) — the pattern holds for all six:
+
+```
+COLD    wall 24.3s = swap 15.2s + prefill 0.36s (63 tok) + decode 8.72s (300 tok @ 34.3 tps)
+WARM    wall  8.8s = swap  0.0s + prefill 0.04s ( 1 tok) + decode 8.73s (300 tok @ 34.2 tps)
+```
+
+Three facts fall out of this:
+
+1. **The swap is the entire difference.** Every row's cold/warm gap equals the
+   swap cost to within a few tenths of a second. Each cold run logged
+   `llama_server: model loaded`; each warm run did not.
+2. **Generation speed is identical in both states** — 99.1 vs 99.2, 65.8 vs
+   66.4, 34.3 vs 34.3 tok/s. A cold model is not slower to generate; it is slow
+   to *arrive*.
+3. **The KV cache does its job.** Warm prefill drops from 42–63 tokens to
+   **1 token** (4 for `ornith`), i.e. the prompt prefix is fully reused. Only
+   the new input is evaluated.
+
+Practical consequence: **a model that is already loaded answers 2.4–3.9×
+faster than the same model after a swap** (11.0 → 3.1 s for the 1.5 B coder,
+55.0 → 14.1 s for the MoE). Stay on one model per session.
 
 ## Why the large model must not be forced into VRAM
 
@@ -77,14 +127,102 @@ The two models **share port 8082 and cannot run simultaneously** — the router
 stops one and starts the other per request. That swap is the "with unit swap"
 column. For repeated generation in one model, stay on it.
 
+## Latency through an agent — what you actually feel
+
+The tables above measure the **API**. Nobody talks to an API directly: an agent
+client wraps every call in its own prompt, tools and process. Measured with
+Hermes Agent on this machine, there are three layers, and only the first one is
+what the previous tables show.
+
+| Layer | Prompt size | Model time | Wall time |
+|---|---:|---:|---:|
+| **1. Raw API, warm** (curl, model resident) | ~60 tok | 3.0 – 14.1 s | **3.1 – 14.1 s** |
+| **2. First message in an agent session** | **20,109 tok** | **~126 s** | **161.3 s** |
+| **3. Later turns, same model (cached)** | 25 – 71 tok | **3.7 – 4.8 s** | **21 – 25 s** |
+
+Row 3's *model* time is lower than row 1's only because those replies were
+46–60 tokens rather than 300 — the point of the table is the **wall** column:
+the agent's model does *less* work than a raw API call and still takes longer,
+because prefill and CLI overhead dominate.
+
+### Why the first message costs two minutes
+
+Hermes sends its full system prompt on every call:
+
+```
+stable (identity/guidance/skills) :  9,018 B
+Tool schemas                     : 46,828 B  (27 tools)
+                                   ─────────
+                                   ≈ 55 KB ≈ 20,100 tokens
+```
+
+Measured on `ornith-1.5-9b`, first turn of a session:
+
+```
+prompt eval time = 123,566 ms / 20,109 tokens  (162.74 tok/s)   ← 123.6 s
+        eval time =   2,506 ms /     57 tokens  ( 22.34 tok/s)   ←   2.5 s
+```
+
+The model answers in 2.5 seconds. It takes **124 seconds to read the question**.
+Add a cold model swap (15.2 s measured for `ornith`) and Hermes CLI boot
+(11.7 s) and the session opens at **161 s**.
+
+### Prompt caching makes turns 2+ cheap
+
+llama.cpp reuses the KV cache for the shared prefix. Same session, same model,
+measured over three consecutive turns:
+
+| Turn | Prompt eval | Decode | Model total | Wall |
+|---|---:|---:|---:|---:|
+| 1 (cold) | 123.6 s / 20,109 tok | 2.5 s / 57 tok | **126.1 s** | **161.3 s** |
+| 2 (cached) | **1.7 s / 25 tok** | 2.0 s / 46 tok | **3.7 s** | **23.4 s** |
+| 3 (cached) | **2.2 s / 71 tok** | 2.6 s / 60 tok | **4.8 s** | **24.6 s** |
+
+Turn 2 re-reads **25 tokens instead of 20,109** — a 495× reduction in prefill.
+Caching works; the cold-start cost is paid once per session.
+
+### The agent itself costs ~17–20 s per turn
+
+Cache hit or not, wall time never drops below ~21 s. Attribution measured:
+
+- `hermes doctor` (no model call at all): **11.7 s** — pure CLI/process boot.
+- Trivial `hermes chat -Q -q "hola"` with a warm cache: **21.5 s** wall for
+  ~4 s of model work.
+
+Hermes relaunches its process, spawns MCP servers and writes session state on
+**every invocation**. That fixed cost, not the model, sets the floor for
+interactive use.
+
+### Six models, each once, through the agent
+
+Each row is a different model, so every row is a cold start (swap + 20 K
+prefill), not a warm turn:
+
+| Model requested | Wall | Router actually loaded | Answer |
+|---|---:|---|---|
+| `qwen2.5-vl-3b-instruct-q4_k_m` | 35.4 s | ✓ correct | correct |
+| `qwen2.5-coder-1.5b-instruct-q4_k_m` | 77.3 s | ✓ correct | **wrong** ("Tashkent") |
+| `ornith-1.5-9b-q4_k_m` | 144.2 s | ✓ correct | correct |
+| `qwen2.5-coder-7b-instruct-q4_k_m` | 202.4 s | ✓ correct | **tool-call JSON, not prose** |
+| `qwen2.5-7b-instruct-q4_k_m` | 203.2 s | ✓ correct | correct |
+| `qwen3-30b-a3b-instruct-2507-q4_k_m` | 339.9 s | ✓ correct | correct |
+
+**Routing was 6/6 correct** — the router served exactly the model requested
+every time. **Content was 4/6**: the two failures are small coder models asked
+a factual question under a 27-tool agent prompt. They are not routing bugs,
+they are what a 1.5 B coder does with general knowledge. Pick a model for the
+job, not for the speed column — see [MODELS.md](MODELS.md).
+
 ## Verified end-to-end
 
-Beyond raw speed, the following was confirmed working in one session:
+Confirmed working in one session:
 
-- All 6 text models answered correctly through the router (6/6).
+- All 6 text models answered correctly **through the router** (6/6, direct API).
 - Both image models produced valid PNGs (2/2).
-- An agent client (Hermes Agent) selected a model, invoked an MCP memory tool
-  and returned a correct answer with no human intervention.
+- The agent selected each requested model correctly (6/6 routing).
+- An agent client selected a model, invoked an MCP memory tool and returned a
+  correct answer with no human intervention.
+- Model swaps happen automatically under the agent — no config edit needed.
 
 ## Reproducing
 

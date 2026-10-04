@@ -39,12 +39,39 @@ and two image models, all reachable through a single OpenAI-compatible endpoint.
 Measured numbers, the install steps, the model guide and everything that broke
 along the way are in [`docs/`](docs/):
 
+- [EXPECTATIONS.md](docs/EXPECTATIONS.md) — **start here**: what to expect and how to use it correctly
 - [HARDWARE.md](docs/HARDWARE.md) — what runs on this card and what cannot
-- [BENCHMARKS.md](docs/BENCHMARKS.md) — tokens/second, measured
+- [BENCHMARKS.md](docs/BENCHMARKS.md) — tokens/second, cold vs warm, agent latency — measured
 - [MODELS.md](docs/MODELS.md) — which model for which job
 - [SETUP.md](docs/SETUP.md) — install from scratch
 - [HERMES.md](docs/HERMES.md) — using it as an agent engine
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — the bugs we hit
+
+## What it actually feels like
+
+Measured on this machine, not estimated. Same prompt, same model, two states:
+
+| Situation | Wall time |
+|---|---:|
+| **Warm** API call, model already loaded | **3.1 – 14.1 s** |
+| **Cold** API call, right after a model swap | **11.0 – 55.0 s** |
+| First message to an agent, new session | **~161 s** |
+| Every later message in that same session | **~21 – 25 s** |
+
+**Row 1 vs row 2 is the swap** — 7.9–38.5 s to restart llama-server with new
+weights. Generation speed is identical in both states (21–99 tok/s); a cold
+model is not slower, it is slow to *arrive*. Keep one model loaded for the
+whole session and you live in row 1.
+
+**Row 2 vs row 3 is the agent, not the GPU.** Hermes sends a **~20,100-token
+prompt** (55 KB of identity plus 27 tool schemas), so the model spends ~124 s
+reading your sentence before answering it in ~2.5 s. Prompt caching collapses
+that to 25–71 tokens on turns 2+, and ~11.7 s of every turn is the agent CLI
+restarting per invocation.
+
+Full breakdown:
+[BENCHMARKS.md](docs/BENCHMARKS.md) ·
+[What to expect and how to use it](docs/EXPECTATIONS.md).
 
 ## Quick start
 

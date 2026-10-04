@@ -132,6 +132,76 @@ that cost on every other request. Pick one and stay on it.
 
 ---
 
+## The agent takes two minutes to answer the first question
+
+**Symptom.** `hermes chat -q "anything"` blocks for 130–160 s, while the same
+question through curl returns in seconds. It looks like a hang.
+
+**Cause.** Prompt size, not the GPU. Hermes sends its full system prompt on
+every call — measured at **20,109 tokens** (~55 KB: 9 KB identity + 45.7 KB of
+27 tool schemas):
+
+```
+prompt eval time = 123,566 ms / 20,109 tokens  (162.74 tok/s)   ← 123.6 s
+        eval time =   2,506 ms /     57 tokens  ( 22.34 tok/s)   ←   2.5 s
+```
+
+The model composes its answer in 2.5 seconds. It spends 124 seconds *reading*
+the prompt. Add a cold swap (16.4 s) and Hermes CLI boot (11.7 s) and you get
+the observed 161 s.
+
+**Fix.** Nothing to fix — llama.cpp's KV cache already handles it. Turns 2+ in
+the same session re-read only **25–71 tokens** (1.7–2.2 s) instead of 20,109.
+The two-minute cost is paid **once per session**.
+
+Measured over three consecutive turns in one session:
+
+| Turn | Prompt eval | Model total | Wall |
+|---|---:|---:|---:|
+| 1 (cold) | 123.6 s / 20,109 tok | 126.1 s | 161.3 s |
+| 2 (cached) | **1.7 s / 25 tok** | 3.7 s | 23.4 s |
+| 3 (cached) | **2.2 s / 71 tok** | 4.8 s | 24.6 s |
+
+**The ~21 s floor on later turns is the agent, not the model.** `hermes doctor`
+alone takes **11.7 s** with no model call — the CLI relaunches its process and
+spawns MCP servers on every invocation. A turn where the model answers in 3.7 s
+still shows ~23 s of wall clock.
+
+### About the `cache_reuse` warning
+
+```
+W load_model: cache_reuse is not supported by this context, it will be disabled
+W load_model: cache_reuse is not supported by multimodal, it will be disabled
+```
+
+**Benign.** `--cache-reuse` is the optional *KV-shifting* fast path; disabling
+it does not disable prompt caching. `--cache-prompt` defaults to enabled and is
+what produces the 25-token cached prefill above. Confirmed by measurement, not
+by reading the flag docs: turn 2 re-read 25 tokens instead of 20,109.
+
+---
+
+## The agent answered with nonsense or a tool call
+
+**Symptom.** Routing is correct (the right model loads), but the content is
+wrong: a small coder model invents a fact, or emits a raw tool-call JSON
+instead of prose.
+
+**Cause.** Model choice, not infrastructure. Measured through the agent with a
+27-tool system prompt:
+
+| Model | Result |
+|---|---|
+| `qwen2.5-coder-1.5b` | `"La capital de Mongolia es Tashkent."` — wrong |
+| `qwen2.5-coder-7b` | `{"name": "text_to_speech", …}` — a tool call, not an answer |
+
+**Fix.** A coder model is not a general-knowledge model. For open questions use
+`ornith-1.5-9b`, `qwen2.5-7b` or the MoE, and see
+[MODELS.md](MODELS.md). There is no routing bug to hunt — verify with
+`cat /run/llama-router/model`, which reports what actually loaded.
+
+---
+
 ## `BrokenPipeError` in the router log
 
 ```

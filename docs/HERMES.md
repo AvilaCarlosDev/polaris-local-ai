@@ -99,6 +99,38 @@ hermes chat -m qwen3-30b-a3b-instruct-2507-q4_k_m -q "your hard question"
 Expect a swap pause on the first request to a model that is not already
 loaded; see [BENCHMARKS.md](BENCHMARKS.md).
 
+## What to expect on screen
+
+Real measurements from this machine. Worth knowing before you conclude
+something is broken:
+
+| | Wall time |
+|---|---:|
+| First message of a session (cold model) | **~161 s** |
+| First message of a session (model already loaded) | **~130 s** |
+| Any later message in the same session | **~21–25 s** |
+| `hermes doctor`, no model call at all | **11.7 s** |
+
+Three separate costs stack up:
+
+1. **A ~20,100-token prompt.** Hermes sends ~55 KB of identity plus 27 tool
+   schemas on every call. At ~160 tok/s that is ~124 s of prefill the model
+   pays before it reads your sentence. llama.cpp's KV cache collapses this to
+   **25–71 tokens** on turns 2+, so the two-minute cost is paid **once per
+   session** — not per message.
+2. **CLI relaunch per invocation.** `hermes chat` is a fresh process each time:
+   boot, MCP spawn, session write. That is the ~11.7 s floor visible even when
+   the model answers in under 4 s.
+3. **Model swaps**, 7–35 s, only when the requested model is not loaded.
+
+A consequence worth acting on: **the fast model in [BENCHMARKS.md](BENCHMARKS.md)
+will not feel fast inside the agent.** `qwen2.5-coder-1.5b` generates at 96
+tok/s, but through Hermes the floor is set by prompt and CLI overhead, not by
+decode speed. For interactive use, favour models that stay loaded.
+
+Full breakdown with per-turn prefill/decode numbers:
+[BENCHMARKS.md → Latency through an agent](BENCHMARKS.md#latency-through-an-agent-what-you-actually-feel).
+
 ## Other consumers
 
 Anything OpenAI-compatible works unchanged:
