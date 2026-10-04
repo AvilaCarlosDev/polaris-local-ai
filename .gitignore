@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local secrets — never commit
+.env
+*.key
+api-key
+ia-secrets
+.htpasswd
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Build output
+build/
+*.o
+*.so
+
+# Downloaded model weights
+*.gguf
+*.safetensors
+*.bin

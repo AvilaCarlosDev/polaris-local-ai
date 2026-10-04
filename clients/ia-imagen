@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Genera una imagen en la torre y la deja en la laptop.
+# Este script solo pega el endpoint y guarda el PNG local, para que no tengas
+# que depender de abrir una URL ni del filesystem del LXC.
+#
+# Elige el modelo con -m/--model (o IA_MODEL):
+#   ia-imagen "un gato" gato          # SD3.5 Medium (default)
+#   ia-imagen -m sd15 "un gato" gato  # SD 1.5
+set -euo pipefail
+
+API="${IA_API:-http://100.97.88.59:8090}"
+# Fuente unica del secreto: ~/.config/ia/secrets.env (600). No hardcodear la key
+# en el script, porque asi queda en dos lugares y se desincronizan al rotar.
+SECRETS="${IA_SECRETS:-$HOME/.config/ia/secrets.env}"
+if [ -r "$SECRETS" ]; then
+  # shellcheck disable=SC1090
+  . "$SECRETS"
+fi
+KEY="${IA_KEY:-${IA_API_KEY:?falta IA_API_KEY en $SECRETS o en el entorno}}"
+DIR="${IA_IMG_DIR:-$HOME/Imagens-IA}"
+STEPS="${IA_STEPS:-20}"
+MODEL="${IA_MODEL:-imagen}"
+
+while [ $# -ge 1 ]; do
+  case "$1" in
+    -m|--model) MODEL="${2:?-m requiere un valor}"; shift 2 ;;
+    -m=*|--model=*) MODEL="${1#*=}"; shift ;;
+    --) shift; break ;;
+    -*) echo "flag desconocida: $1" >&2; exit 1 ;;
+    *) break ;;
+  esac
+done
+
+[ $# -ge 1 ] || { echo "uso: $(basename "$0") [-m sd15|sd35] <prompt> [nombre]" >&2; exit 1; }
+
+prompt="$1"
+name="${2:-}"
+mkdir -p "$DIR"
+
+payload=$(PROMPT="$prompt" NAME="$name" STEPS="$STEPS" MODEL="$MODEL" python3 -c '
+import json, os
+d = {"model": os.environ["MODEL"],
+     "messages": [{"role": "user", "content": os.environ["PROMPT"]}]}
+if os.environ["NAME"]:
+    d["name"] = os.environ["NAME"]
+print(json.dumps(d))')
+
+echo "generando con $MODEL (puede tardar ~1min)..." >&2
+body=$(curl -sS --max-time 900 "$API/v1/chat/completions" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $KEY" \
+  --data-binary "$payload")
+
+url=$(printf '%s' "$body" | python3 -c '
+import json, re, sys
+d = json.load(sys.stdin)
+msg = d["choices"][0]["message"]["content"]
+# El mensaje trae ![nombre](url); el parentesis de cierre no es parte de la URL.
+m = re.search(r"https?://[^\s)\"\x27]+/img/[^\s)\"\x27]+", msg)
+print(m.group(0) if m else "", file=sys.stderr)
+sys.stdout.write(m.group(0) if m else "")')
+
+[ -n "$url" ] || { echo "no se pudo generar: $body" >&2; exit 1; }
+
+out="$DIR/$(basename "$url")"
+curl -sS --max-time 60 -o "$out" "$url"
+echo "$out"

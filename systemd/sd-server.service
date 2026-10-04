@@ -1,0 +1,23 @@
+[Unit]
+Description=stable-diffusion.cpp server (imagenes, Vulkan)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/stable-diffusion.cpp
+ExecStart=/opt/stable-diffusion.cpp/build/bin/sd-server \
+  -m /opt/ia/models/sd3.5_medium-Q5_1.gguf \
+  --clip_l /opt/ia/models/clip_l-Q4_0.gguf \
+  --clip_g /opt/ia/models/clip_g-Q4_0.gguf \
+  --t5xxl /opt/ia/models/t5xxl-Q4_0.gguf \
+  --listen-ip 127.0.0.1 \
+  --listen-port 8082 \
+  --backend Vulkan0 \
+  --max-vram 6 \
+  --eager-load
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

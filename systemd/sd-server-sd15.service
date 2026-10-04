@@ -1,0 +1,16 @@
+[Unit]
+Description=stable-diffusion.cpp (SD 1.5) stable-diffusion.cpp server (imagenes, Vulkan)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/stable-diffusion.cpp
+ExecStart=/opt/stable-diffusion.cpp/build/bin/sd-server \
+  -m /opt/ia/models/sd15-Q5_1.gguf \
+  --listen-ip 127.0.0.1 \
+  --listen-port 8082 \
+  --backend Vulkan0 \
+  --max-vram 6
+Restart=always
+RestartSec=10

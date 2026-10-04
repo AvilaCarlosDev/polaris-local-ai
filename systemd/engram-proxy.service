@@ -1,0 +1,17 @@
+[Unit]
+Description=Engram bridge: expone el API de engram (127.0.0.1:7437) en la IP LAN del LXC
+After=engram.service
+Requires=engram.service
+
+[Service]
+Type=simple
+# OJO: socat NO valida el token. ENGRAM_HTTP_TOKEN solo aplica fuera de
+# loopback y engram esta en loopback -> auth desactivada. La unica barrera
+# es la red: bind a la IP del LXC (nunca 0.0.0.0) + regla nft en el
+# input chain que solo deja pasar desde el host venator (192.168.10.124).
+ExecStart=/usr/bin/socat TCP-LISTEN:7438,bind=192.168.10.126,reuseaddr,fork TCP:127.0.0.1:7437
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
