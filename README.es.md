@@ -7,7 +7,11 @@ una AMD Radeon RX 580 2048SP (8 GB de VRAM) con 32 GB de RAM.** Sin nube, sin
 facturas de API. También sirve como motor de inferencia para un agente de
 programación/asistente de IA (Hermes Agent).
 
-![El stack respondiendo un chat completion por curl y generando una imagen con SD 3.5, ambos a través del endpoint local compatible con OpenAI](docs/assets/polaris-local-ai-demo.png)
+<p align="center"><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero.mp4"><img src="docs/media/hero-preview.webp" width="720" alt="El stack listando sus modelos por categoría, respondiendo un chat en 6,1 s y arrancando una generación con SD 3.5"></a><br>
+<sub><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero.mp4">video completo (29 s)</a> — una corrida real: 57 s de reloj, reproducido a 2×</sub></p>
+
+<p align="center"><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero-scene-720.mp4"><img src="docs/media/hero-scene-preview.webp" width="720" alt="FLOATING ISLAND MIRAGE: diorama voxel con una isla flotante, un sombrero de paja gigante, palmeras y un velero, con la cámara orbitando"></a><br>
+<sub><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero-scene-720.mp4">FLOATING ISLAND MIRAGE (29 s)</a> — 870 frames renderizados y codificados en la máquina local, título generado por el qwen2.5-7b local</sub></p>
 
 > **Inspirado en [Strata](https://github.com/Niko1221/Strata).**
 > Strata demostró que un stack de inferencia local serio se puede empaquetar
@@ -40,6 +44,7 @@ un único endpoint compatible con OpenAI.
 | **Visión** | Qwen2.5-VL 3 B con su proyector mmproj |
 | **Imágenes** | SD 3.5 Medium y SD 1.5 a través de stable-diffusion.cpp |
 | **API** | Un endpoint compatible con OpenAI, una API key, 6 ids de texto/visión + generación de imágenes |
+| **Selector** | `ia-models` lista todos los ids que sirve el router, agrupados por categoría |
 | **Agente** | Funciona como motor backend de Hermes Agent, con tools MCP |
 | **Huella** | Corre en un LXC de Debian sobre un host Proxmox, o en bare metal |
 
@@ -102,12 +107,37 @@ curl http://127.0.0.1:8090/v1/chat/completions \
        "messages":[{"role":"user","content":"Hello"}]}'
 ```
 
+## Elegir un modelo
+
+Preguntale al router qué sirve en lugar de adivinarlo de la documentación:
+
+```bash
+ia-models               # todos los ids, agrupados por categoría
+ia-models -c vision     # una sola categoría
+ia-models --json        # lista cruda para scripts
+```
+
+| Categoría | Ids | Cuándo usarla |
+|---|---|---|
+| `texto` | coder de 1.5 B → 7 B, más ornith 9 B | chat, resúmenes, código |
+| `vision` | Qwen2.5-VL 3 B | la tarea involucra una imagen |
+| `multitarea` | Qwen3-30B-A3B (3 B activos) | razonamiento largo y trabajo de agente |
+| `imagen` | SD 3.5 Medium, SD 1.5 | querés una imagen |
+| `audio` | whisper medium | transcripción — servicio aparte, listado solo si está instalado |
+
+Las categorías salen del endpoint mismo (`GET /v1/models`), así que la lista
+siempre dice la verdad: un `*` marca el modelo cargado en este momento, y nada
+de la tabla puede desincronizarse de lo que el router corre de verdad. Los
+trade-offs modelo por modelo están en [MODELS.md](docs/MODELS.md).
+
 ## Estructura del repositorio
 
 ```
 router.py              Router compatible con OpenAI: intercambia modelos bajo demanda
 image-mcp.py           Puente de generación de imágenes
 clients/ia-imagen      CLI para generar una imagen y guardarla localmente
+clients/ia-models      CLI que lista todos los modelos, agrupados por categoría
+scripts/hero-demo.sh   El script detrás del video de arriba — corrélo vos mismo
 systemd/               Las units que corren el stack
 docs/                  Notas de hardware, benchmarks, instalación, gotchas
 setup.sh               Instalador de una sola ejecución
