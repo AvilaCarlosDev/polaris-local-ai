@@ -75,12 +75,16 @@ done
 hdr "Graphics"
 GPU_NAME=""
 if command -v lspci >/dev/null 2>&1; then
-  GPU_NAME="$(lspci 2>/dev/null | grep -i 'vga\|3d controller' | head -1 | sed 's/.*: //')"
-  [[ -n "$GPU_NAME" ]] && ok "GPU: $GPU_NAME"
+  # `|| true`: under `set -o pipefail` a grep with no match (a cloud runner
+  # without a GPU) would return 1 and kill the script right here.
+  GPU_NAME="$(lspci 2>/dev/null | grep -i 'vga\|3d controller' | head -1 | sed 's/.*: //' || true)"
+  # Not `[[ ... ]] && ok ...`: under `set -e` that returns 1 when the card is
+  # not listed (cloud runners) and kills the script right after the header.
+  if [[ -n "$GPU_NAME" ]]; then ok "GPU: $GPU_NAME"; fi
 fi
 
 if command -v vulkaninfo >/dev/null 2>&1 && vulkaninfo --summary >/dev/null 2>&1; then
-  DEV="$(vulkaninfo --summary 2>/dev/null | grep -m1 'deviceName' | sed 's/.*= *//')"
+  DEV="$(vulkaninfo --summary 2>/dev/null | grep -m1 'deviceName' | sed 's/.*= *//' || true)"
   ok "Vulkan device: ${DEV:-unknown}"
 else
   if [[ $CHECK_ONLY -eq 1 ]]; then
@@ -114,7 +118,7 @@ else
   bad "RAM ${RAM_GB} GB < ${MIN_RAM_GB} GB — models will not fit"
 fi
 
-AVAIL_GB="$(df -BG --output=avail / 2>/dev/null | tail -1 | tr -dc '0-9')"
+AVAIL_GB="$(df -BG --output=avail / 2>/dev/null | tail -1 | tr -dc '0-9' || true)"
 if [[ -n "$AVAIL_GB" ]] && (( AVAIL_GB >= MIN_DISK_GB )); then
   ok "disk ${AVAIL_GB} GB free (minimum ${MIN_DISK_GB} GB for models)"
 else
