@@ -11,8 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: shellcheck setup.sh
-        run: shellcheck setup.sh
+      - name: shellcheck
+        # Installer and every shipped shell script: clients (bash) and the
+        # script that records the README video. ia-models is python, so it is
+        # covered by ruff and pytest instead.
+        run: shellcheck setup.sh clients/ia-imagen scripts/hero-demo.sh scripts/hero-scene.sh
 
       - uses: actions/setup-python@v5
         with:
