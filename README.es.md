@@ -20,7 +20,7 @@ programación/asistente de IA (Hermes Agent).
 > en localhost, documentación con números reales — pero para hardware más
 > antiguo y con otro motor. Aquí no hay código de Strata. Créditos a su autor
 > por el concepto y por el estándar que fijó.
-> Ver [LICENSE](LICENSE) para el aviso completo.
+> Ver [NOTICE](NOTICE) para el aviso de atribución completo.
 
 ---
 

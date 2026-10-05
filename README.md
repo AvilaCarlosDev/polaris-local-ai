@@ -18,7 +18,7 @@ serves as the inference engine for an AI coding/assistant agent (Hermes Agent).
 > one install script, an OpenAI-compatible API on localhost, docs with real
 > numbers — but for older hardware and with a different engine. No Strata code
 > is included. Credits to its author for the concept and the bar it set.
-> See [LICENSE](LICENSE) for the full notice.
+> See [NOTICE](NOTICE) for the full attribution notice.
 
 ---
 

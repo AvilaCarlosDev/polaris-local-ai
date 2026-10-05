@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This project was inspired by Strata (https://github.com/Niko1221/Strata),
-also released under the MIT License. Strata's authorship, design and original
-work belong to the Strata project and its contributors. This repository does
-not contain Strata's code; it documents a separate implementation built with
-llama.cpp and stable-diffusion.cpp on different hardware, and credits Strata
-as the inspiration for its structure and scope.
