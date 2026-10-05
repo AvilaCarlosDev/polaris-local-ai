@@ -56,6 +56,23 @@ ALIASES = {"fast": "qwen2.5-coder-1.5b-instruct-q4_k_m",
            "general": "qwen2.5-7b-instruct-q4_k_m",
            "ornith": "ornith-1.5-9b-q4_k_m"}
 
+# Selector por categoria. Un modelo cae en UNA sola: es lo que el usuario ve
+# primero, asi que la categoria no puede ser ambigua. Orden = orden de salida.
+CATEGORY_ORDER = ("texto", "vision", "multitarea", "imagen", "audio")
+CATEGORY_OF = {
+    "qwen2.5-coder-1.5b-instruct-q4_k_m": "texto",
+    "qwen2.5-7b-instruct-q4_k_m": "texto",
+    "qwen2.5-coder-7b-instruct-q4_k_m": "texto",
+    "ornith-1.5-9b-q4_k_m": "texto",
+    "qwen2.5-vl-3b-instruct-q4_k_m": "vision",
+    "qwen3-30b-a3b-instruct-2507-q4_k_m": "multitarea",
+}
+# Audio no pasa por el router: whisper-server vive en su propio puerto y expone
+# /inference (no la ruta OpenAI /v1/audio/transcriptions, que da 404 en esta
+# build). Se anuncia igual para que el selector muestre las cinco categorias.
+AUDIO_ID = "whisper-medium"
+AUDIO_INFO = {"port": 8081, "path": "/inference"}
+
 # Flags por modelo. El template por defecto fija "-ngl 99 --threads 4", que con
 # el MoE de 18.6 GB llena la VRAM al 99.4% y hace thrashing (medido: 8.12 tok/s
 # con -ngl 99 contra 22.26 con auto-fit). Sin -ngl, llama.cpp calcula sola cuantas
@@ -283,6 +300,51 @@ def ensure(model):
         return load(model)
 
 
+def units_active():
+    """Estado de las units de imagen y audio en una sola llamada a systemctl."""
+    units = [cfg["unit"] for cfg in IMG_MODELS.values()] + ["whisper-server.service"]
+    out = subprocess.run(["systemctl", "is-active", *units],
+                         capture_output=True, text=True, check=False).stdout.split()
+    return dict(zip(units, out))
+
+
+def models_payload(now=None, active=None):
+    """Cuerpo de /v1/models, con categoria por modelo.
+
+    Separado del handler para poder testearlo en CI sin servidor ni systemd:
+    ahora y active se inyectan. El orden es por categoria, que es como el
+    selector los muestra.
+    """
+    if now is None:
+        now = current() or "qwen2.5-7b-instruct-q4_k_m"
+    if active is None:
+        active = units_active()
+    entries = [{"id": name, "object": "model", "owned_by": "ia-local",
+                "created": 0, "root": name, "loaded": name == now,
+                "category": CATEGORY_OF[name]}
+               for name in sorted(MODELS)]
+    for img_id, cfg in IMG_MODELS.items():
+        entries.append({"id": img_id, "object": "model", "owned_by": "ia-local",
+                        "created": 0, "root": f"stable-diffusion-{img_id}",
+                        "loaded": active.get(cfg["unit"]) == "active",
+                        "category": "imagen"})
+    # Alias legacy: clientes viejos siguen pidiendo "imagen" sin aclarar cual.
+    entries.append({"id": "imagen", "object": "model", "owned_by": "ia-local",
+                    "created": 0, "root": "stable-diffusion-1.5",
+                    "loaded": active.get(IMG_MODELS[IMG_DEFAULT]["unit"]) == "active",
+                    "category": "imagen"})
+    # El audio se anuncia solo si whisper esta instalado: un id sin backend
+    # detras es una opcion muerta en el selector del cliente. systemctl
+    # is-active imprime "not-found" cuando no existe la unit.
+    if active.get("whisper-server.service", "inactive") != "not-found":
+        entries.append({"id": AUDIO_ID, "object": "model", "owned_by": "ia-local",
+                        "created": 0, "root": "whisper",
+                        "loaded": active.get("whisper-server.service") == "active",
+                        "category": "audio", **AUDIO_INFO})
+    entries.sort(key=lambda e: (CATEGORY_ORDER.index(e["category"]), e["id"]))
+    return {"object": "list", "data": entries}
+
+
 def forward(method, path, body, headers):
     req = urllib.request.Request(UPSTREAM + path, data=body, method=method)
     for k, v in headers.items():
@@ -363,19 +425,7 @@ def main():
                 # Anunciar TODOS los modelos, no solo el cargado. opencode arma
                 # su selector desde este endpoint: si devolvemos solo el que esta
                 # en VRAM, el usuario ve una unica opcion y no puede cambiar.
-                now = current() or "qwen2.5-7b-instruct-q4_k_m"
-                entries = [{"id": name, "object": "model", "owned_by": "ia-local",
-                            "created": 0, "root": name, "loaded": name == now}
-                           for name in sorted(MODELS)]
-                entries.append({"id": "imagen", "object": "model", "owned_by": "ia-local",
-                                "created": 0, "root": "stable-diffusion-1.5",
-                                "loaded": False})
-                data = json.dumps({"object": "list", "data": entries}).encode()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
+                self._json(200, models_payload())
                 return
             st, hd, data = forward("GET", self.path, None, dict(self.headers))
             self.send_response(st)

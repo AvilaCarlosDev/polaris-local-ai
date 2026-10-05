@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""Selector de modelos locales, agrupados por categoria.
+
+Consulta el router (no el filesystem), asi que sirve desde cualquier maquina
+de la tailnet, igual que ia-imagen.
+
+  ia-models                tabla completa, en orden de categoria
+  ia-models -c vision      una sola categoria
+  ia-models --json         salida cruda para scripts
+"""
+import argparse
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+DEFAULT_API = "http://100.97.88.59:8090"
+CATEGORY_ORDER = ("texto", "vision", "multitarea", "imagen", "audio")
+HINTS = {
+    "texto": "chat, resumenes, codigo",
+    "vision": "lee imagenes y capturas",
+    "multitarea": "razonamiento largo y trabajo agente",
+    "imagen": "generacion de imagenes (SD)",
+    "audio": "transcripcion de audio (whisper)",
+}
+# El router anuncia "imagen" por compatibilidad con clientes viejos; en la tabla
+# es ruido, asi que se muestra como alias del modelo que realmente se carga.
+ALIASES = {"imagen": "sd35"}
+
+
+def load_secrets():
+    """Fuente unica del secreto: ~/.config/ia/secrets.env (600)."""
+    path = os.environ.get("IA_SECRETS",
+                          os.path.expanduser("~/.config/ia/secrets.env"))
+    if not os.path.isfile(path):
+        return
+    try:
+        with open(path) as fh:
+            for line in fh:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, _, v = line.partition("=")
+                    os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+    except OSError:
+        pass
+
+
+def fetch(api, key):
+    req = urllib.request.Request(f"{api}/v1/models",
+                                 headers={"Authorization": f"Bearer {key}"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.load(resp)["data"]
+
+
+def main():
+    p = argparse.ArgumentParser(
+        description="Selector de modelos locales por categoria")
+    p.add_argument("-c", "--category", choices=CATEGORY_ORDER,
+                   help="mostrar solo una categoria")
+    p.add_argument("--json", action="store_true", help="salida JSON")
+    p.add_argument("--api", default=os.environ.get("IA_API", DEFAULT_API),
+                   help="url base del router")
+    args = p.parse_args()
+
+    load_secrets()
+    key = os.environ.get("IA_KEY") or os.environ.get("IA_API_KEY")
+    if not key:
+        print("falta IA_API_KEY (entorno o IA_SECRETS)", file=sys.stderr)
+        return 1
+    try:
+        models = fetch(args.api, key)
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        print(f"no se pudo consultar el router en {args.api}: {e}",
+              file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(models, indent=2, ensure_ascii=False))
+        return 0
+
+    by_cat = {}
+    for m in models:
+        by_cat.setdefault(m.get("category", "texto"), []).append(m)
+
+    shown = 0
+    for cat in CATEGORY_ORDER:
+        items = by_cat.get(cat)
+        if not items or (args.category and cat != args.category):
+            continue
+        print(f"{cat} — {HINTS[cat]}")
+        for m in items:
+            mark = "*" if m.get("loaded") else " "
+            name = m["id"]
+            if name in ALIASES:
+                name = f"{name} (alias de {ALIASES[name]})"
+            extra = ""
+            if cat == "audio":
+                extra = f"   → :{m.get('port')}{m.get('path', '')}"
+            print(f"  {mark} {name}{extra}")
+        print()
+        shown += len(items)
+
+    if not shown:
+        print(f"no hay modelos en la categoria {args.category!r}",
+              file=sys.stderr)
+        return 1
+    print("* = modelo cargado ahora mismo")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

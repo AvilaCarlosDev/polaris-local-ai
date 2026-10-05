@@ -3,6 +3,27 @@
 Six text/vision models and two image models, all behind one endpoint. The
 router picks whichever `model` id you send and swaps the engine if needed.
 
+## Categories
+
+Every id carries one of five categories, and `ia-models` prints them grouped:
+
+```bash
+ia-models                # everything
+ia-models -c multitarea  # one category
+```
+
+| Category | Ids |
+|---|---|
+| `texto` | coder 1.5 B, 7 B, coder 7 B, ornith 9 B |
+| `vision` | Qwen2.5-VL 3 B |
+| `multitarea` | Qwen3-30B-A3B |
+| `imagen` | `sd35` (`imagen` alias), `sd15` |
+| `audio` | `whisper-medium` — only listed when whisper is installed |
+
+`GET /v1/models` is the source of truth: the category comes from the endpoint,
+not from a table in this file, so scripts and the CLI always agree with what
+the router is actually running.
+
 ## Text and vision
 
 | Id | Size | Type | Best for |
@@ -58,6 +79,20 @@ ia-imagen -m sd15 "a red fox figurine, studio lighting" my-fox  # SD 1.5
 
 Files land in `~/Imagens-IA/` and are also served from
 `http://<host>:8090/img/<name>.png`.
+
+## Audio (optional)
+
+Whisper does **not** go through the router — it is a separate service on its
+own port, and the router only advertises it when that service is installed:
+
+| | |
+|---|---|
+| Id | `whisper-medium` |
+| Endpoint | `http://<host>:8081/inference` |
+| Category | `audio` |
+
+The path is `/inference`, not the OpenAI-style `/v1/audio/transcriptions` —
+that one returns 404. See [SETUP.md](SETUP.md) for the service itself.
 
 ## Getting the weights
 
