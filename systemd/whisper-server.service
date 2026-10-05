@@ -1,0 +1,18 @@
+[Unit]
+Description=whisper.cpp server (transcription, CPU)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/whisper.cpp
+ExecStart=/opt/whisper.cpp/build/bin/whisper-server \
+  -m /opt/ia/models/ggml-medium.bin \
+  --host 127.0.0.1 \
+  --port 8081 \
+  -t 4
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

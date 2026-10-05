@@ -13,10 +13,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODELS_DIR="/opt/ia/models"
+IA_DIR="/opt/ia"
 LLAMA_DIR="/opt/llama.cpp"
 SD_DIR="/opt/stable-diffusion.cpp"
+WHISPER_DIR="/opt/whisper.cpp"
+WHISPER_MODEL="$MODELS_DIR/ggml-medium.bin"
 KEY_FILE="/etc/ia/api-key"
 UNIT_DIR="/etc/systemd/system"
+# Python entrypoints deployed to $IA_DIR. The units run them from there, so
+# this list and systemd/ have to stay in sync (see tests/test_units.py).
+ENTRYPOINTS=(router.py image-mcp.py)
 MIN_RAM_GB=16
 MIN_DISK_GB=40
 
@@ -134,6 +140,17 @@ build_sd() {
   cmake --build "$SD_DIR/build" -j "$(nproc)" >/dev/null
   ok "stable-diffusion.cpp built with Vulkan"
 }
+build_whisper() {
+  # Audio runs on the CPU: no Vulkan here, and no point building it on a host
+  # that does not have the .bin weights.
+  if [[ $CHECK_ONLY -eq 1 ]]; then bad "whisper.cpp not built at $WHISPER_DIR"; return; fi
+  warn "cloning and building whisper.cpp (CPU)"
+  git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git "$WHISPER_DIR"
+  cmake -S "$WHISPER_DIR" -B "$WHISPER_DIR/build" -DCMAKE_BUILD_TYPE=Release \
+        -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=OFF >/dev/null
+  cmake --build "$WHISPER_DIR/build" -j "$(nproc)" >/dev/null
+  ok "whisper.cpp built"
+}
 
 if [[ -x "$LLAMA_DIR/build/bin/llama-server" ]]; then
   ok "llama-server present"
@@ -145,6 +162,18 @@ if [[ -x "$SD_DIR/build/bin/sd-server" ]]; then
 else
   build_sd
 fi
+# whisper is tied to its weights: without ggml-medium.bin the unit would be
+# installed into a crash loop, and the router would advertise an audio id with
+# nothing behind it. No model, no audio category.
+if [[ -f "$WHISPER_MODEL" ]]; then
+  if [[ -x "$WHISPER_DIR/build/bin/whisper-server" ]]; then
+    ok "whisper-server present"
+  else
+    build_whisper
+  fi
+else
+  warn "no $WHISPER_MODEL — skipping whisper.cpp and the audio category"
+fi
 
 # ── 5. Model weights ───────────────────────────────────────────────────────
 hdr "Model weights"
@@ -152,6 +181,11 @@ if [[ -d "$MODELS_DIR" ]] && compgen -G "$MODELS_DIR/*.gguf" >/dev/null; then
   ok "$(find "$MODELS_DIR" -name '*.gguf' | wc -l) gguf file(s) in $MODELS_DIR"
 else
   warn "no weights in $MODELS_DIR — download them yourself, see docs/MODELS.md"
+fi
+if [[ -f "$WHISPER_MODEL" ]]; then
+  ok "audio weight present: ggml-medium.bin"
+else
+  warn "no ggml-medium.bin in $MODELS_DIR — audio stays disabled (see docs/MODELS.md)"
 fi
 
 # ── 6. API key ─────────────────────────────────────────────────────────────
@@ -173,15 +207,24 @@ fi
 hdr "Systemd units"
 if [[ $CHECK_ONLY -eq 1 ]]; then
   for u in "$ROOT"/systemd/*.service; do
-    if [[ -e "$UNIT_DIR/$(basename "$u")" ]]; then
-      ok "$(basename "$u") installed"
+    name="$(basename "$u")"
+    if [[ "$name" == "whisper-server.service" && ! -f "$WHISPER_MODEL" ]]; then
+      warn "$name skipped — no $WHISPER_MODEL"
+    elif [[ -e "$UNIT_DIR/$name" ]]; then
+      ok "$name installed"
     else
-      warn "$(basename "$u") not installed"
+      warn "$name not installed"
     fi
   done
 else
   for u in "$ROOT"/systemd/*.service; do
     name="$(basename "$u")"
+    # Same rule as the engine above: no weight, no unit. Installing it would
+    # only produce a crash loop and an audio id with no backend.
+    if [[ "$name" == "whisper-server.service" && ! -f "$WHISPER_MODEL" ]]; then
+      warn "$name skipped — no $WHISPER_MODEL"
+      continue
+    fi
     # The key placeholder keeps secrets out of the repository. Substitute it
     # from the real key file at install time — never commit the real value.
     sed "s|__IA_API_KEY__|$(cat "$KEY_FILE")|g" "$u" > "$UNIT_DIR/$name"
@@ -190,10 +233,27 @@ else
   systemctl daemon-reload
 fi
 
+# ── 8. Python entrypoints ───────────────────────────────────────────────────
+# The units run these from /opt/ia, which does not exist on a clean host —
+# without this step nothing ever listens on 8090.
+hdr "Application"
+for script in "${ENTRYPOINTS[@]}"; do
+  if [[ $CHECK_ONLY -eq 1 ]]; then
+    if [[ -e "$IA_DIR/$script" ]]; then ok "$script installed"; else
+      warn "$script not installed yet"
+    fi
+  else
+    install -D -m 0755 "$ROOT/$script" "$IA_DIR/$script"
+    ok "$script installed to $IA_DIR"
+  fi
+done
+
 # ── 8. Start ───────────────────────────────────────────────────────────────
 if [[ $CHECK_ONLY -eq 0 && $DO_START -eq 1 ]]; then
   hdr "Starting"
-  for s in llama-server router sd-server-sd15; do
+  START_UNITS=(llama-server router sd-server-sd15)
+  if [[ -f "$WHISPER_MODEL" ]]; then START_UNITS+=(whisper-server); fi
+  for s in "${START_UNITS[@]}"; do
     systemctl enable --now "$s.service" >/dev/null 2>&1 || true
     if systemctl is-active --quiet "$s.service"; then ok "$s running"; else
       warn "$s did not start — see docs/TROUBLESHOOTING.md"

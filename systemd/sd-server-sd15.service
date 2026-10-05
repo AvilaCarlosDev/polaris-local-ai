@@ -14,3 +14,6 @@ ExecStart=/opt/stable-diffusion.cpp/build/bin/sd-server \
   --max-vram 6
 Restart=always
 RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
