@@ -2,6 +2,13 @@
 
 [English](README.md) · **Español**
 
+<p align="center">
+<a href="https://github.com/AvilaCarlosDev/polaris-local-ai/actions/workflows/ci.yml"><img src="https://github.com/AvilaCarlosDev/polaris-local-ai/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="LICENSE"><img src="https://img.shields.io/github/license/AvilaCarlosDev/polaris-local-ai" alt="Licencia: MIT"></a>
+<a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases"><img src="https://img.shields.io/github/v/release/AvilaCarlosDev/polaris-local-ai" alt="Release"></a>
+<a href="docs/HARDWARE.md"><img src="https://img.shields.io/badge/AMD-RX%20580%208%20GB-orange" alt="Corre en AMD RX 580 8 GB"></a>
+</p>
+
 **Una pila de IA completa y local — texto, visión y generación de imágenes — en
 una AMD Radeon RX 580 2048SP (8 GB de VRAM) con 32 GB de RAM.** Sin nube, sin
 facturas de API. También sirve como motor de inferencia para un agente de

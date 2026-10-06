@@ -2,6 +2,13 @@
 
 [**English**](README.md) · [Español](README.es.md)
 
+<p align="center">
+<a href="https://github.com/AvilaCarlosDev/polaris-local-ai/actions/workflows/ci.yml"><img src="https://github.com/AvilaCarlosDev/polaris-local-ai/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="LICENSE"><img src="https://img.shields.io/github/license/AvilaCarlosDev/polaris-local-ai" alt="License: MIT"></a>
+<a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases"><img src="https://img.shields.io/github/v/release/AvilaCarlosDev/polaris-local-ai" alt="Release"></a>
+<a href="docs/HARDWARE.md"><img src="https://img.shields.io/badge/AMD-RX%20580%208%20GB-orange" alt="Runs on AMD RX 580 8 GB"></a>
+</p>
+
 **A full local AI stack — text, vision and image generation — on an AMD Radeon
 RX 580 2048SP (8 GB VRAM) with 32 GB of RAM.** No cloud, no API bills. It also
 serves as the inference engine for an AI coding/assistant agent (Hermes Agent).
