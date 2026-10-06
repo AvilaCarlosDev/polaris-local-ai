@@ -106,18 +106,14 @@ Never `systemctl start` both. One will fail to bind.
 
 ---
 
-## Every request dies with "Empty reply from server"
+## Every request pays the model swap
 
-**Cause.** `router.service` lost its state directory. `/run` is tmpfs, so the
-file is gone after every reboot unless systemd recreates it.
+**Cause.** `/var/lib/llama-router/model` is missing or empty, so the router
+thinks nothing is loaded and reloads the model on every request.
 
-**Fix.** The unit must declare:
-
-```ini
-[Service]
-RuntimeDirectory=llama-router
-RuntimeDirectoryMode=0755
-```
+**Fix.** Nothing, usually: the next request reloads once and rewrites the
+file. If it keeps happening, check `journalctl -u router` — the disk is
+probably read-only or full.
 
 ---
 

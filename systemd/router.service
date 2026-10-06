@@ -4,10 +4,6 @@ After=network.target llama-server.service
 
 [Service]
 Type=simple
-# RuntimeDirectory: /run es tmpfs, sin esto el router no encuentra su archivo de
-# estado al arrancar y cada request de chat muere con "Empty reply from server".
-RuntimeDirectory=llama-router
-RuntimeDirectoryMode=0755
 ExecStart=/usr/bin/python3 /opt/ia/router.py
 Restart=always
 RestartSec=5

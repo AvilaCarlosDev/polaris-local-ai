@@ -90,3 +90,25 @@ def test_audio_is_not_advertised_when_whisper_is_absent():
         active={"whisper-server.service": "not-found"})
     assert router.AUDIO_ID not in {e["id"] for e in payload["data"]}
     assert "audio" not in {e["category"] for e in payload["data"]}
+
+
+def test_slot_file_is_keyed_by_model_and_slot():
+    # El KV restore solo sirve con el mismo modelo: el nombre lo lleva.
+    assert router.slot_file("qwen2.5-7b-instruct-q4_k_m", 0) == \
+        "qwen2.5-7b-instruct-q4_k_m-0.bin"
+    # fs_validate_filename del server rechaza separadores de ruta.
+    assert "/" not in router.slot_file("foo/bar", 2)
+
+
+def test_slot_dir_has_trailing_slash_and_is_persistent():
+    # llama-server concatena slot_save_path + filename sin separador.
+    assert router.SLOT_DIR.endswith("/")
+    # /run es tmpfs: el KV se perderia en cada reboot del LXC.
+    assert not router.SLOT_DIR.startswith("/run/")
+
+
+def test_state_file_is_persistent():
+    # Con STATE en /run, un restart del router (deploy) dejaba current() en ""
+    # y slots_save() se saltaba el save: el KV caliente se perdia sin log.
+    assert router.STATE.startswith("/var/lib/")
+    assert not router.STATE.startswith("/run/")

@@ -51,7 +51,7 @@ another 7.9–38.5 s of waiting for weights to load.
 ## Rule 2 — know what is loaded
 
 ```bash
-cat /run/llama-router/model
+cat /var/lib/llama-router/model
 ```
 
 If you are about to make a request and this file says something else, you are
@@ -111,7 +111,7 @@ measures the agent too.
 ## Correct usage, in short
 
 1. **One model per session.** Switching costs 7.9–38.5 s every time.
-2. **Check `/run/llama-router/model`** before wondering why a request is slow.
+2. **Check `/var/lib/llama-router/model`** before wondering why a request is slow.
 3. **Give the agent's first message ~2.5 minutes**, then expect ~21–25 s.
 4. **Do not force `-ngl`** on the 30 B MoE — it halves throughput
    ([TROUBLESHOOTING.md](TROUBLESHOOTING.md)).
@@ -123,7 +123,7 @@ measures the agent too.
 
 ```bash
 # what is loaded right now
-cat /run/llama-router/model
+cat /var/lib/llama-router/model
 
 # cold: ask for a model that is not loaded, time the whole request
 time curl -s http://192.168.10.126:8090/v1/chat/completions \

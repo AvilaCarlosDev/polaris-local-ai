@@ -95,9 +95,9 @@ What each one does:
 | `sd-server.service` | SD 3.5, **also** port 8082 — mutually exclusive |
 | `whisper-server.service` | transcription on port 8081, CPU only, optional |
 
-`router.service` sets `RuntimeDirectory=llama-router`. Do not remove it: without
-it the router cannot find its state file and every request dies with
-"Empty reply from server".
+The router keeps its state file at `/var/lib/llama-router/model` (persistent:
+it survives reboots and router restarts). `state_dir()` creates the directory
+on first write, so there is no systemd `RuntimeDirectory` involved.
 
 `systemd/optional/` holds units that are **not** installed by `setup.sh` —
 they carry site-specific settings (a LAN IP, a service this repo does not

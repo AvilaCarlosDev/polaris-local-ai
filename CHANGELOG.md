@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-06
+
+### Added
+
+- **KV slot cache across restarts** (`router.py`): `llama-server` now runs
+  with `--slot-save-path /var/lib/llama-slots/`. The router dumps every slot
+  to disk before stopping the server (model swap, or freeing VRAM for SD) and
+  restores them when the same model loads again. Measured on real hardware
+  with a 19,845-token prompt on the `qwen2.5-7b`: a swap used to cost
+  **166.8 s** of prefill and now answers in **4.5 s**
+  (`cached_tokens: 19,844`); the full image → chat path went from **167.9 s
+  to 9.5 s**. A save writes the whole 577 MB file in 0.2–1.3 s and a restore
+  takes 0.2 s. Cold requests are unchanged — there is nothing to restore —
+  and the process restart itself (~6–10 s) still happens: what disappears is
+  the huge prefill.
+
+### Fixed
+
+- **Saves can no longer clobber the cache.** llama-server writes a header
+  file even when the slot holds no KV (`n_saved: 0`, 36 bytes), so a save
+  against a freshly started server would destroy the good 577 MB file. Saves
+  now go to a temp file and are promoted with `os.replace()` only when
+  `n_saved > 0`, and restores skip stubs smaller than 4 KB.
+- **The router's state file survives restarts.** `STATE` moved from
+  `/run/llama-router/model` to `/var/lib/llama-router/model` and
+  `router.service` dropped `RuntimeDirectory=`. After a deploy or a router
+  crash, `current()` returned `""`: the router forced one unnecessary reload
+  and — with the new cache — silently skipped the save, losing the warm KV
+  without a log line. `SETUP`, `TROUBLESHOOTING` and `EXPECTATIONS` now
+  document the persistent path.
+
 ## [0.2.0] - 2026-10-05
 
 ### Added

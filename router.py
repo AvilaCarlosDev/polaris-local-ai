@@ -40,7 +40,18 @@ M = "/opt/ia/models"
 MMPROJ = f"{M}/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf"
 CTX = "65536"
 BIN = "/opt/llama.cpp/build/bin/llama-server"
-STATE = "/run/llama-router/model"
+# Estado persistente en /var/lib y no en /run: si el router se reinicia
+# (deploy, crash) con llama-server corriendo, /run quedo vacio y current()
+# devolvia "" — slots_save() se saltaba el save y se perdia el KV caliente.
+STATE = "/var/lib/llama-router/model"
+# --slot-save-path: el KV cache de cada slot se vuelca a disco antes de cada
+# reinicio del server (swap de modelo o liberar VRAM para SD) y se restaura al
+# volver. /var/lib y no /run: /run es tmpfs y se pierde en cada reboot del LXC.
+SLOT_DIR = "/var/lib/llama-slots/"
+# Marca cuando llama-server se reinicio fuera de load() (generate_image): recien
+# ahi hay un server sano donde restaurar. threading.Event en vez de `global`
+# porque ruff PLW0603 prohíbe la sentencia global.
+_restore_pending = threading.Event()
 
 MODELS = {
     "qwen2.5-7b-instruct-q4_k_m":        f"{M}/qwen2.5-7b-instruct-q4_k_m.gguf",
@@ -188,6 +199,7 @@ def generate_image(prompt, steps=20, width=512, height=512, name=None,
                             capture_output=True, text=True,
                             check=False).stdout.strip() == "active"
     if was_up:
+        slots_save(current())
         subprocess.run(["systemctl", "stop", "llama-server"],
                        capture_output=True, check=False)
         time.sleep(2)
@@ -221,6 +233,9 @@ def generate_image(prompt, steps=20, width=512, height=512, name=None,
         if was_up:
             subprocess.run(["systemctl", "start", "llama-server"],
                            capture_output=True, check=False)
+            # El server vuelve con el MISMO modelo pero KV vacio: quien
+            # restaura es ensure() cuando confirme que quedo sano.
+            _restore_pending.set()
 
 
 def current():
@@ -240,9 +255,128 @@ def healthy():
         return False
 
 
+def _slots_list():
+    """GET /slots del upstream con reintento: recien levantado, /health puede
+    responder antes que el resto de los endpoints. Devuelve [] solo al final."""
+    for attempt in range(3):
+        req = urllib.request.Request(f"{UPSTREAM}/slots",
+                                     headers={"Authorization": f"Bearer {API_KEY}"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.load(r)
+            slots = data if isinstance(data, list) else data.get("slots", [])
+            if slots:
+                return slots
+        except Exception:
+            pass
+        if attempt < 2:
+            time.sleep(2)
+    return []
+
+
+def _slot_action(action, slot_id, filename):
+    body = json.dumps({"filename": filename}).encode()
+    req = urllib.request.Request(
+        f"{UPSTREAM}/slots/{slot_id}?action={action}", data=body, method="POST",
+        headers={"Content-Type": "application/json",
+                 "Authorization": f"Bearer {API_KEY}"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.load(r)
+
+
+def slot_file(model, slot_id):
+    """Un archivo por modelo y por slot: llama_state_seq solo sirve con el mismo
+    modelo y los mismos flags de contexto con los que se guardo."""
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", model) or "model"
+    return f"{safe}-{slot_id}.bin"
+
+
+def slots_save(model):
+    """Vuelca el KV de cada slot a disco ANTES de matar llama-server.
+
+    Best-effort y por slot: el slot vacio, un server sin --slot-save-path o un
+    server caido fallan individualmente y seguimos igual — un swap o una
+    generacion de imagen nunca se rompen por esto."""
+    if not model:
+        return
+    try:
+        os.makedirs(SLOT_DIR, exist_ok=True)
+    except OSError:
+        return
+    slots = _slots_list()
+    if not slots:
+        sys.stderr.write("[router] save omitido: /slots no responde "
+                         "(server caido o sin --slot-save-path)\n")
+        sys.stderr.flush()
+        return
+    for slot in slots:
+        fn = slot_file(model, slot["id"])
+        # Guardar a .tmp y promover solo con n_saved>0: si el server recien
+        # levanto (post-imagen o crash) sus slots estan vacios, y un save
+        # directo pisaria el archivo bueno con un header de36 bytes.
+        # Costo medido: eso destruyo el KV de19.846 tokens una vez.
+        tmp = fn + f".tmp{os.getpid()}-{threading.get_ident()}"
+        try:
+            res = _slot_action("save", slot["id"], tmp)
+            if res.get("n_saved", 0) > 0 and os.path.isfile(SLOT_DIR + tmp):
+                os.replace(SLOT_DIR + tmp, SLOT_DIR + fn)
+                sys.stderr.write(
+                    f"[router] slot {slot['id']} guardado de {model}: "
+                    f"{res.get('n_saved', 0)} tokens "
+                    f"({res.get('timings', {}).get('save_ms', 0) / 1000:.1f}s)\n")
+            else:
+                # Slot vacio: no hay nada que preservar ni que pisar.
+                try:
+                    os.remove(SLOT_DIR + tmp)
+                except OSError:
+                    pass
+        except Exception as e:
+            try:
+                os.remove(SLOT_DIR + tmp)
+            except OSError:
+                pass
+            sys.stderr.write(f"[router] slot {slot['id']} no se guarda: {e}\n")
+        sys.stderr.flush()
+
+
+def slots_restore(model):
+    """Recupera el KV previo de `model` si existe su archivo. llama-server
+    reutiliza el prefijo del prompt restaurado que coincida con el proximo
+    request; si no coincide, hace prefill normal (cero riesgo de corrupcion)."""
+    if not model:
+        return
+    slots = _slots_list()
+    if not slots:
+        sys.stderr.write(f"[router] restore de {model} omitido: "
+                         "/slots no responde\n")
+        sys.stderr.flush()
+        return
+    found = False
+    for slot in slots:
+        fn = slot_file(model, slot["id"])
+        # <4KB = header sin KV (slot vacio): no hay nada que restaurar.
+        if not os.path.isfile(SLOT_DIR + fn) \
+                or os.path.getsize(SLOT_DIR + fn) < 4096:
+            continue
+        found = True
+        try:
+            res = _slot_action("restore", slot["id"], fn)
+            sys.stderr.write(
+                f"[router] slot {slot['id']} restaurado de {model}: "
+                f"{res.get('n_restored', 0)} tokens "
+                f"({res.get('timings', {}).get('restore_ms', 0) / 1000:.1f}s)\n")
+        except Exception as e:
+            sys.stderr.write(f"[router] slot {slot['id']} no se restaura: {e}\n")
+        sys.stderr.flush()
+    if not found:
+        sys.stderr.write(f"[router] restore de {model}: sin archivo previo "
+                         f"en {SLOT_DIR}\n")
+        sys.stderr.flush()
+
+
 def state_dir():
-    """/run es tmpfs: se borra en cada reboot del LXC. Crear el dir cada vez que
-    se escribe evita el FileNotFoundError que mataba el request entero."""
+    """Crear el dir del estado cada vez que se escribe: evita el
+    FileNotFoundError que mataba el request entero."""
     d = os.path.dirname(STATE)
     try:
         os.makedirs(d, exist_ok=True)
@@ -252,6 +386,11 @@ def state_dir():
 
 
 def load(model):
+    slots_save(current())
+    try:
+        os.makedirs(SLOT_DIR, exist_ok=True)
+    except OSError:
+        pass
     subprocess.run(["systemctl", "stop", "llama-server"],
                    capture_output=True, check=False)
     time.sleep(2)
@@ -266,7 +405,7 @@ def load(model):
         "[Service]\nType=simple\n"
         f"ExecStart={BIN} -m {MODELS[model]} {extra}"
         f"{flags}"
-        f"--api-key {API_KEY} --jinja\n"
+        f"--slot-save-path {SLOT_DIR} --api-key {API_KEY} --jinja\n"
         "Restart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n"
     )
     # Nombre unico por hilo/proceso: dos requests concurrentes comparten el
@@ -284,6 +423,8 @@ def load(model):
         if healthy():
             with open(STATE, "w") as f:
                 f.write(model)
+            _restore_pending.clear()
+            slots_restore(model)
             return True
         time.sleep(1)
     return False
@@ -292,10 +433,15 @@ def load(model):
 def ensure(model):
     # Lock de proceso: ThreadingHTTPServer atiende cada request en un hilo, y sin
     # esto dos requests que piden modelos distintos (o el mismo) corren load() a la
-    # vez: uno para llama-server mientras el otro lo reinicia, y ambos clients se
-    # quedan colgados sin respuesta (BrokenPipe / IncompleteRead).
+    # vez: uno para llama-server mientras el otro lo reinicia, y ambos clients
+    # se quedan colgados sin respuesta (BrokenPipe / IncompleteRead).
     with _load_lock:
         if current() == model and healthy():
+            if _restore_pending.is_set():
+                # generate_image reinicio llama-server fuera de load(): aca
+                # recien hay un server sano donde restaurar el KV guardado.
+                _restore_pending.clear()
+                slots_restore(model)
             return True
         return load(model)
 
