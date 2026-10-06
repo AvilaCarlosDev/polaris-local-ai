@@ -14,8 +14,12 @@ una AMD Radeon RX 580 2048SP (8 GB de VRAM) con 32 GB de RAM.** Sin nube, sin
 facturas de API. También sirve como motor de inferencia para un agente de
 programación/asistente de IA (Hermes Agent).
 
+**Lo que estás viendo:** un comando lista todos los modelos que sirve el router, una petición de chat se responde en 6,1 s y arranca una generación de imagen con SD 3.5. Todo corre en la RX 580; nada sale de la máquina.
+
 <p align="center"><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero.mp4"><img src="docs/media/hero-preview.webp" width="720" alt="El stack listando sus modelos por categoría, respondiendo un chat en 6,1 s y arrancando una generación con SD 3.5"></a><br>
 <sub><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero.mp4">video completo (29 s)</a> — una corrida real: 57 s de reloj, reproducido a 2×</sub></p>
+
+**Segundo clip:** una escena de demostración renderizada y codificada en la misma máquina. Muestra el equipo haciendo trabajo real de principio a fin, no la salida de un modelo por sí sola.
 
 <p align="center"><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero-scene-720.mp4"><img src="docs/media/hero-scene-preview.webp" width="720" alt="FLOATING ISLAND MIRAGE: diorama voxel con una isla flotante, un sombrero de paja gigante, palmeras y un velero, con la cámara orbitando"></a><br>
 <sub><a href="https://github.com/AvilaCarlosDev/polaris-local-ai/releases/download/v0.2.0/hero-scene-720.mp4">FLOATING ISLAND MIRAGE (29 s)</a> — 870 frames renderizados y codificados en la máquina local, título generado por el qwen2.5-7b local</sub></p>
