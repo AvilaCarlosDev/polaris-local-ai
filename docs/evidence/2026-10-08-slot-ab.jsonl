@@ -1,0 +1,13 @@
+{"wall_s": 178.73, "prompt_tokens": 19648, "cached_tokens": 0, "prompt_n": 19648, "prompt_s": 160.2, "decode_s": 1.98, "path": "first-request", "slot_file": "none", "rep": 0}
+{"wall_s": 167.14, "prompt_tokens": 19648, "cached_tokens": 0, "prompt_n": 19648, "prompt_s": 159.95, "decode_s": 1.98, "path": "swap", "slot_file": "deleted", "rep": 1, "saved_mb": 572, "files_dropped": 1}
+{"wall_s": 7.43, "prompt_tokens": 19648, "cached_tokens": 19647, "prompt_n": 1, "prompt_s": 0.08, "decode_s": 1.97, "path": "swap", "slot_file": "kept", "rep": 1, "saved_mb": 572, "files_dropped": 0}
+{"wall_s": 167.75, "prompt_tokens": 19648, "cached_tokens": 0, "prompt_n": 19648, "prompt_s": 159.98, "decode_s": 1.39, "path": "image", "slot_file": "deleted", "rep": 1, "saved_mb": 572, "files_dropped": 1}
+{"wall_s": 7.85, "prompt_tokens": 19648, "cached_tokens": 19647, "prompt_n": 1, "prompt_s": 0.06, "decode_s": 1.39, "path": "image", "slot_file": "kept", "rep": 1, "saved_mb": 572, "files_dropped": 0}
+{"wall_s": 165.75, "prompt_tokens": 19648, "cached_tokens": 0, "prompt_n": 19648, "prompt_s": 160.14, "decode_s": 1.4, "path": "swap", "slot_file": "deleted", "rep": 2, "saved_mb": 572, "files_dropped": 1}
+{"wall_s": 5.83, "prompt_tokens": 19648, "cached_tokens": 19647, "prompt_n": 1, "prompt_s": 0.06, "decode_s": 1.39, "path": "swap", "slot_file": "kept", "rep": 2, "saved_mb": 572, "files_dropped": 0}
+{"wall_s": 167.58, "prompt_tokens": 19648, "cached_tokens": 0, "prompt_n": 19648, "prompt_s": 159.95, "decode_s": 1.39, "path": "image", "slot_file": "deleted", "rep": 2, "saved_mb": 572, "files_dropped": 1}
+{"wall_s": 7.85, "prompt_tokens": 19648, "cached_tokens": 19647, "prompt_n": 1, "prompt_s": 0.06, "decode_s": 1.39, "path": "image", "slot_file": "kept", "rep": 2, "saved_mb": 572, "files_dropped": 0}
+{"wall_s": 165.67, "prompt_tokens": 19648, "cached_tokens": 0, "prompt_n": 19648, "prompt_s": 160.06, "decode_s": 1.39, "path": "swap", "slot_file": "deleted", "rep": 3, "saved_mb": 572, "files_dropped": 1}
+{"wall_s": 5.82, "prompt_tokens": 19648, "cached_tokens": 19647, "prompt_n": 1, "prompt_s": 0.06, "decode_s": 1.39, "path": "swap", "slot_file": "kept", "rep": 3, "saved_mb": 572, "files_dropped": 0}
+{"wall_s": 167.76, "prompt_tokens": 19648, "cached_tokens": 0, "prompt_n": 19648, "prompt_s": 160.11, "decode_s": 1.4, "path": "image", "slot_file": "deleted", "rep": 3, "saved_mb": 572, "files_dropped": 1}
+{"wall_s": 7.85, "prompt_tokens": 19648, "cached_tokens": 19647, "prompt_n": 1, "prompt_s": 0.06, "decode_s": 1.38, "path": "image", "slot_file": "kept", "rep": 3, "saved_mb": 572, "files_dropped": 0}

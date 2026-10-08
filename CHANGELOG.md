@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`scripts/bench-slots.py`** — reproducible A/B of the KV slot cache: same
+  model, same 19,648-token prompt, same restart, with and without the saved
+  slot file. Re-measured on 2026-10-08 (n=3): a swap goes from **165.8 s to
+  5.8 s** and image → chat from **167.8 s to 7.8 s**. Section and raw rows in
+  `docs/BENCHMARKS.md` and `docs/evidence/`.
+- **`scripts/bench-images.py`** — stable-diffusion.cpp vs ComfyUI with the
+  same prompt, seed, size, steps and sampler. On the RX 580, sd.cpp + Vulkan
+  is ~5× faster than ComfyUI, which can only use the CPU on Polaris (SD 1.5:
+  26.3 vs 126.5 s; SD 3.5 Medium: 55.0 vs 277.1 s). On the CPU alone ComfyUI
+  is the faster engine — documented too.
+
 ## [0.3.0] - 2026-10-06
 
 ### Added
