@@ -1,0 +1,7 @@
+{"phase": "before", "check": "disconnect", "stream": false, "gave_up_after_s": 8.0, "server_busy_after_hangup_s": 124.2}
+{"phase": "before", "check": "disconnect", "stream": true, "gave_up_after_s": 8.0, "server_busy_after_hangup_s": 103.6}
+{"phase": "before", "check": "eviction", "conversation_tokens": 19606, "reread_tokens_after_side_request": 4, "reread_s": 0.2, "wall_s": 1.4}
+{"phase": "before", "check": "eviction", "conversation_tokens": 55260, "reread_tokens_after_side_request": 55260, "reread_s": 448.4, "wall_s": 450.6}
+{"phase": "after", "check": "disconnect", "stream": false, "gave_up_after_s": 8.0, "server_busy_after_hangup_s": 0.5}
+{"phase": "after", "check": "disconnect", "stream": true, "gave_up_after_s": 8.0, "server_busy_after_hangup_s": 0.5}
+{"phase": "after", "check": "eviction", "conversation_tokens": 55260, "reread_tokens_after_side_request": 4, "reread_s": 0.2, "wall_s": 2.5}

@@ -131,6 +131,57 @@ decode speed. For interactive use, favour models that stay loaded.
 Full breakdown with per-turn prefill/decode numbers:
 [BENCHMARKS.md → Latency through an agent](BENCHMARKS.md#latency-through-an-agent-what-you-actually-feel).
 
+## Context compression on a 64K local model
+
+Long sessions eventually hit Hermes' context compression: it asks the model
+for a summary of the middle of the conversation and replaces it. On this
+stack that used to stall for 300 s and give up — five times in one evening,
+25 minutes of dead waiting. The router-side causes and their fixes are in
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md#the-agent-stalls-for-300-s-while-compressing-context).
+The Hermes side is one setting:
+
+```yaml
+compression:
+  threshold_tokens: 36000   # the cap Hermes actually honours
+  protect_last_n: 10        # a shorter verbatim tail frees more per compaction
+```
+
+**`threshold` alone does nothing here.** Hermes raises any `threshold` below
+75% to 75% for windows under 512K tokens, then caps the result at 85%: with
+`context_length: 65536`, `threshold: 0.35` still fires at **55,705 tokens**
+(`"effective_threshold":55705` in `agent.log`). By then the summary is
+expensive and decode has dropped to ~8.7 tok/s (measured at 54K of context,
+against ~28 tok/s on a short one). `threshold_tokens` is an absolute cap that
+bypasses that floor.
+
+**Do not set it too low either.** After a compaction Hermes keeps its base
+prompt (~15K tokens: identity plus tool schemas), the protected tail and the
+summary (~2–3K). If the threshold sits below that sum, compression can never
+get under it and fires on every turn. With `protect_last_n: 20` the
+post-compaction size measured 27–31K, so a 20K threshold is unreachable;
+36K with a 10-message tail leaves ~11K of conversation between compactions.
+
+**The summary is a reasoning call.** Ornith thinks before it writes, and in
+the end-to-end run the summary took 4 min 20 s with ~15K characters of
+reasoning (`fell back to reasoning fields (15039 chars)` in `agent.log`).
+Hermes deliberately sends it without `max_tokens` and throws away any reply
+that ends in `finish_reason=length`, so never cap it below a full summary —
+the router's default is 16384 for that reason. Turning thinking off for that
+one task should cut most of the wait:
+
+```yaml
+auxiliary:
+  compression:
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+```
+
+> Not verified yet on this stack: it depends on ornith's chat template
+> reading `enable_thinking`. Check that the next compression logs no
+> `reasoning fields` warning and finishes well under a minute before
+> relying on it.
+
 ## Other consumers
 
 Anything OpenAI-compatible works unchanged:

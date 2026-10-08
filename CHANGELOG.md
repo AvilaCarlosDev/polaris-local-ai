@@ -18,6 +18,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   is ~5× faster than ComfyUI, which can only use the CPU on Polaris (SD 1.5:
   26.3 vs 126.5 s; SD 3.5 Medium: 55.0 vs 277.1 s). On the CPU alone ComfyUI
   is the faster engine — documented too.
+- `scripts/repro-agent-stall.py` reproduces the three router behaviours
+  behind the agent stall on the CT; `tests/test_forward.py` covers them in CI
+  with a fake upstream.
+
+### Fixed
+
+- **Agent context compression no longer stalls for 300 s.** Diagnosed from
+  the llama-server log of a real Hermes session (five 300 s stalls in one
+  evening) and fixed in the router:
+  - `forward_live()` streams responses as they arrive and cancels the
+    upstream request when the client hangs up. Before, an abandoned request
+    kept llama-server generating — and the router lock held — for **124 s**
+    (plain) / **104 s** (SSE) after the client left; now **0.5 s**.
+  - Requests without any output cap get `max_tokens: 16384`
+    (`IA_DEFAULT_MAX_TOKENS`, 0 disables). Ornith had written 9,898 tokens
+    into a summary Hermes sent uncapped. A first cut used 4096: in the
+    end-to-end Hermes run the summary came back in 4 min 20 s but ornith had
+    spent the whole cap reasoning, the reply ended in `finish_reason=length`
+    and Hermes discarded it. Hermes asks for summaries of up to 10K tokens,
+    so the floor is 16384; abandoned requests are cut by `forward_live()`.
+  - Every model runs with `--parallel 1`. Four slots split the 64K KV cells,
+    and a side request evicted the conversation: **55,260 tokens re-read in
+    448 s**; with one slot, **4 tokens in 0.2 s**.
+- `docs/HERMES.md`: `compression.threshold` is raised to 75% by Hermes for
+  small windows; use `threshold_tokens` (36000 here), and keep it above the
+  post-compaction size or it fires every turn.
 
 ## [0.3.0] - 2026-10-06
 
