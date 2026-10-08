@@ -127,6 +127,53 @@ The two models **share port 8082 and cannot run simultaneously** — the router
 stops one and starts the other per request. That swap is the "with unit swap"
 column. For repeated generation in one model, stay on it.
 
+## Why stable-diffusion.cpp and not ComfyUI
+
+Asked on r/ROCm. The short answer is the backend, not the engine: ComfyUI runs
+on PyTorch, PyTorch has no Vulkan backend, and ROCm does not support Polaris
+(this CT does not even have `/dev/kfd`). On this card ComfyUI can only use the
+CPU. stable-diffusion.cpp is built on ggml, which has a Vulkan backend, so it
+runs on the RX 580 through RADV.
+
+**Method.** `scripts/bench-images.py`, stack stopped, same prompt and seed,
+512×512, 20 steps, `euler`, CFG 7 (SD 1.5) / 4.5 (SD 3.5). sd.cpp runs
+`sd-cli` once per image, so every sd.cpp number is a **cold** start. ComfyUI
+(commit `d91ed5f`, PyTorch 2.14.1+cpu) is started once with `--cpu`; its first
+image is cold and the rest are warm. Weights: the Comfy-Org checkpoints for
+ComfyUI; for sd.cpp both the production GGUFs and, for SD 1.5, the *same*
+fp16 safetensors ComfyUI loads.
+
+| Model | Engine | Device | Weights | Wall per image | Peak RAM |
+|---|---|---|---|---:|---:|
+| SD 1.5 | **sd.cpp** | **RX 580 (Vulkan)** | Q5_1 GGUF | **26.2 – 26.3 s** (cold) | 0.3 GB |
+| SD 1.5 | sd.cpp | RX 580 (Vulkan) | fp16 safetensors | 27.1 – 29.2 s (cold) | 0.3 GB |
+| SD 1.5 | ComfyUI | CPU, 6 threads | fp16 safetensors | 126.5 – 126.7 s warm, 139.8 s cold | 6.6 GB |
+| SD 1.5 | sd.cpp | CPU, 6 threads | fp16 safetensors | 321.7 – 322.5 s (cold) | 3.7 GB |
+| SD 3.5 Medium | **sd.cpp** | **RX 580 (Vulkan)** | Q5_1 + Q4_0 encoders | **55.0 – 67.1 s** (cold) | 1.5 GB |
+| SD 3.5 Medium | ComfyUI | CPU, 6 threads | fp8 all-in-one | 277.1 s warm, 313.7 s cold | 23.9 GB |
+| SD 3.5 Medium | sd.cpp | CPU, 6 threads | Q5_1 + Q4_0 encoders | 816.5 s (cold, n=1) | 7.5 GB |
+
+What it says:
+
+- **On this card sd.cpp + Vulkan is ~5× faster than ComfyUI**, and that is
+  comparing sd.cpp *cold* with ComfyUI *warm*: 26.3 vs 126.5 s on SD 1.5,
+  55.0 vs 277.1 s on SD 3.5.
+- **It is not that sd.cpp is a faster engine.** On the CPU, ComfyUI wins
+  clearly — 126.5 vs 321.7 s on SD 1.5, 277 vs 817 s on SD 3.5. PyTorch's CPU
+  kernels are better than ggml's. The advantage is that sd.cpp can use the GPU
+  at all.
+- **Quantisation is not the trick either.** The same fp16 weights ComfyUI
+  loads run in 27–29 s on Vulkan, 1–3 s behind the Q5_1 GGUF.
+- **Memory decides whether it fits next to the LLMs.** ComfyUI on the CPU
+  computes in fp32: SD 3.5 peaked at 23.9 GB of RAM in a 24 GB CT. sd.cpp
+  keeps the weights in VRAM and stays at 1.5 GB of RAM, which is what lets
+  the router run SD and a 30 B MoE on the same box.
+- **What ComfyUI gives that sd.cpp does not:** the node graph, a huge
+  custom-node ecosystem and faster support for new models. On a card with
+  working ROCm or CUDA that is the better tool. On Polaris it is a 5× tax.
+
+Raw rows: [`evidence/2026-10-08-sdcpp-vs-comfyui.jsonl`](evidence/2026-10-08-sdcpp-vs-comfyui.jsonl).
+
 ## Latency through an agent — what you actually feel
 
 The tables above measure the **API**. Nobody talks to an API directly: an agent
@@ -212,6 +259,47 @@ every time. **Content was 4/6**: the two failures are small coder models asked
 a factual question under a 27-tool agent prompt. They are not routing bugs,
 they are what a 1.5 B coder does with general knowledge. Pick a model for the
 job, not for the speed column — see [MODELS.md](MODELS.md).
+
+## KV cache across restarts — slot save/restore A/B
+
+Prompt caching only lives as long as the llama-server process. Every model
+swap restarts it, and so does every image generation (SD needs the VRAM).
+Since 0.3.0 the router runs llama-server with `--slot-save-path`, dumps each
+slot to disk right before the stop and restores it once the same model is
+healthy again. Suggested by a reader on r/ROCm; this is the measurement.
+
+**Method.** `scripts/bench-slots.py`, run on the CT against the router.
+Same model (`qwen2.5-7b-instruct-q4_k_m`), same 19,648-token prompt (the
+repo's own docs plus `router.py`), `temperature: 0`, `max_tokens: 32`. Both
+arms go through the *same* restart; the only difference is whether the saved
+slot file is deleted before the model comes back. 3 repetitions per cell.
+
+| Path | Slot file | Wall (median, n=3) | Range | Prefilled | Cached |
+|---|---|---:|---:|---:|---:|
+| swap away → back + request | deleted | 165.8 s | 165.7 – 167.1 s | 19,648 tok | 0 |
+| swap away → back + request | **kept** | **5.8 s** | 5.8 – 7.4 s | **1 tok** | 19,647 |
+| image (SD 1.5) → chat | deleted | 167.8 s | 167.6 – 167.8 s | 19,648 tok | 0 |
+| image (SD 1.5) → chat | **kept** | **7.8 s** | 7.8 – 7.9 s | **1 tok** | 19,647 |
+
+- **28× on a swap, 21× after an image.** What disappears is the prefill:
+  160.0 s at ~123 tok/s in every "deleted" run, 0.06 s in every "kept" run.
+- **Save and restore are not the cost.** 19,679 tokens → a 572 MB file,
+  0.2 s to save and 0.2 s to restore (router log). The rest of the 5.8 s is
+  the process restart and 1.4–2.0 s of decode.
+- **The first request of a model is unchanged** — 178.7 s here, there is
+  nothing on disk yet. The cache pays off from the second visit on.
+- **Same model only.** llama-server validates the file against the loaded
+  model and context, so the router keys files by model id
+  (`<model>-<slot>.bin`). Each warm model costs ~0.6 GB of disk.
+
+Raw rows: [`evidence/2026-10-08-slot-ab.jsonl`](evidence/2026-10-08-slot-ab.jsonl).
+Reproduce on your own box (needs root: the "deleted" arm removes files in
+`/var/lib/llama-slots/`):
+
+```bash
+sudo python3 scripts/bench-slots.py --corpus docs/*.md router.py setup.sh \
+  --chars 64500 --reps 3
+```
 
 ## Verified end-to-end
 

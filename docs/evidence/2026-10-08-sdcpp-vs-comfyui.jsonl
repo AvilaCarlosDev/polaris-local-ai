@@ -1,0 +1,16 @@
+{"engine": "sd.cpp", "backend": "vulkan0", "weights": "sd15-Q5_1.gguf", "seed": 42, "wall_s": 26.3, "load_s": 0.01, "sampling_s": 23.7, "decode_s": 2.0, "peak_rss_mb": 290}
+{"engine": "sd.cpp", "backend": "vulkan0", "weights": "sd15-Q5_1.gguf", "seed": 43, "wall_s": 26.2, "load_s": 0.01, "sampling_s": 23.7, "decode_s": 2.0, "peak_rss_mb": 302}
+{"engine": "sd.cpp", "backend": "vulkan0", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "seed": 42, "wall_s": 29.2, "load_s": 0.01, "sampling_s": 26.45, "decode_s": 2.0, "peak_rss_mb": 304}
+{"engine": "sd.cpp", "backend": "vulkan0", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "seed": 43, "wall_s": 27.1, "load_s": 0.01, "sampling_s": 24.65, "decode_s": 2.0, "peak_rss_mb": 303}
+{"engine": "sd.cpp", "backend": "cpu", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "seed": 42, "wall_s": 321.7, "load_s": 0.01, "sampling_s": 297.8, "decode_s": 23.16, "peak_rss_mb": 3751}
+{"engine": "sd.cpp", "backend": "cpu", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "seed": 43, "wall_s": 322.5, "load_s": 0.01, "sampling_s": 298.56, "decode_s": 23.05, "peak_rss_mb": 3751}
+{"engine": "ComfyUI", "backend": "cpu", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "seed": 42, "run": 1, "state": "cold", "wall_s": 139.8, "server_boot_s": 15.0, "comfy_reported": "133.31"}
+{"engine": "ComfyUI", "backend": "cpu", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "seed": 43, "run": 2, "state": "warm", "wall_s": 126.7, "server_boot_s": 15.0, "comfy_reported": "126.49"}
+{"engine": "ComfyUI", "backend": "cpu", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "seed": 44, "run": 3, "state": "warm", "wall_s": 126.5, "server_boot_s": 15.0, "comfy_reported": "126.23"}
+{"engine": "ComfyUI", "weights": "v1-5-pruned-emaonly-fp16.safetensors", "peak_rss_mb": 6643}
+{"engine": "sd.cpp", "backend": "vulkan0", "weights": "sd3.5_medium-Q5_1.gguf", "seed": 42, "wall_s": 67.1, "load_s": 0.2, "sampling_s": 52.79, "decode_s": 2.43, "peak_rss_mb": 1457}
+{"engine": "sd.cpp", "backend": "vulkan0", "weights": "sd3.5_medium-Q5_1.gguf", "seed": 43, "wall_s": 55.0, "load_s": 0.2, "sampling_s": 48.11, "decode_s": 2.03, "peak_rss_mb": 1466}
+{"engine": "sd.cpp", "backend": "cpu", "weights": "sd3.5_medium-Q5_1.gguf", "seed": 42, "wall_s": 816.5, "load_s": 0.2, "sampling_s": 778.85, "decode_s": 23.13, "peak_rss_mb": 7466}
+{"engine": "ComfyUI", "backend": "cpu", "weights": "sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors", "seed": 42, "run": 1, "state": "cold", "wall_s": 313.7, "server_boot_s": 7.0, "comfy_reported": "313.29"}
+{"engine": "ComfyUI", "backend": "cpu", "weights": "sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors", "seed": 43, "run": 2, "state": "warm", "wall_s": 277.1, "server_boot_s": 7.0, "comfy_reported": "276.61"}
+{"engine": "ComfyUI", "weights": "sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors", "peak_rss_mb": 23943}
