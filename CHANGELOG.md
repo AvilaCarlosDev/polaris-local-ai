@@ -21,6 +21,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `scripts/repro-agent-stall.py` reproduces the three router behaviours
   behind the agent stall on the CT; `tests/test_forward.py` covers them in CI
   with a fake upstream.
+- `scripts/bench-summary.py` times an agent's compression summary with the
+  reasoning unbounded, bounded (`reasoning_budget_tokens`) or off. With
+  ornith, a 1024-token budget keeps the summary as detailed as unbounded and
+  cuts it from 328–856 s to 197–266 s; thinking off is faster but uneven.
+- `repro-agent-stall.py --only agent`: the eviction check shaped like a real
+  agent turn (reply without its reasoning plus a new question). 104 tokens
+  re-read after a side request on a 34K-token conversation.
 
 ### Fixed
 
@@ -44,6 +51,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `docs/HERMES.md`: `compression.threshold` is raised to 75% by Hermes for
   small windows; use `threshold_tokens` (36000 here), and keep it above the
   post-compaction size or it fires every turn.
+- `docs/HERMES.md`: the summary's reasoning is bounded with
+  `auxiliary.compression.extra_body.reasoning_budget_tokens: 1024`, and
+  Engram is documented as a local MCP server (it no longer runs on the CT).
 
 ## [0.3.0] - 2026-10-06
 

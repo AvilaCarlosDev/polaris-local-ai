@@ -38,35 +38,38 @@ The router accepts the same key from `/etc/ia/api-key` or
 
 ## 3. Give the agent memory over MCP
 
-An agent that cannot remember yesterday is a demo, not a tool. The router
-ships the HTTP bridge (`systemd/engram-proxy.service`) that exposes the memory
-service on the LAN; the agent reaches it over SSH:
+An agent that cannot remember yesterday is a demo, not a tool. Memory is
+[Engram](https://github.com/Gentleman-Programming/engram), run **on the
+machine where the agent runs**, as a local MCP server over stdio:
 
 ```yaml
 mcp_servers:
   engram:
-    command: ssh
+    command: env
     args:
-      - -o
-      - BatchMode=yes
-      - -p
-      - '2222'
-      - root@192.168.10.126
-      - env
-      - HOME=/root
-      - ENGRAM_DATA_DIR=/opt/ia/engram-data
-      - /usr/local/bin/engram
+      - ENGRAM_DATA_DIR=/home/you/.local/share/engram/data
+      - /home/you/.local/bin/engram
       - mcp
       - --tools=agent
     enabled: true
 ```
 
+It used to run on the CT and be reached over SSH. Local is better on every
+axis that matters here: no network hop on every memory call, it keeps working
+when the GPU box is off, and the memories stay on the disk of the machine you
+work on. Moving it is a copy of `engram.db`; compare the observation titles in
+both databases before deleting the old one.
+
+`systemd/optional/engram-proxy.service` is still in the repo for a setup that
+wants Engram on the server and shared over the LAN; `setup.sh` does not
+install it.
+
 Verify it registered:
 
 ```bash
 hermes mcp list
-# Name      Transport        Tools   Status
-# engram    ssh -o Batch…    all     ✓ enabled
+# Name      Transport                      Tools   Status
+# engram    env ENGRAM_DATA_DIR=/home...   all     ✓ enabled
 ```
 
 ## 4. Give it a voice
@@ -155,32 +158,65 @@ against ~28 tok/s on a short one). `threshold_tokens` is an absolute cap that
 bypasses that floor.
 
 **Do not set it too low either.** After a compaction Hermes keeps its base
-prompt (~15K tokens: identity plus tool schemas), the protected tail and the
-summary (~2–3K). If the threshold sits below that sum, compression can never
-get under it and fires on every turn. With `protect_last_n: 20` the
+prompt (identity plus tool schemas: the first turn of a session arrives with
+22,952 tokens, ~21K of them fixed), the protected tail and the summary
+(~2–3K). If the threshold sits below that sum, compression can never get
+under it and fires on every turn. With `protect_last_n: 20` the
 post-compaction size measured 27–31K, so a 20K threshold is unreachable;
-36K with a 10-message tail leaves ~11K of conversation between compactions.
+36K with a 10-message tail is the working value here.
 
-**The summary is a reasoning call.** Ornith thinks before it writes, and in
-the end-to-end run the summary took 4 min 20 s with ~15K characters of
-reasoning (`fell back to reasoning fields (15039 chars)` in `agent.log`).
-Hermes deliberately sends it without `max_tokens` and throws away any reply
-that ends in `finish_reason=length`, so never cap it below a full summary —
-the router's default is 16384 for that reason. Turning thinking off for that
-one task should cut most of the wait:
+**Limit the summary's reasoning, do not switch it off.** Ornith thinks
+before it writes. Hermes sends the summary without `max_tokens` on purpose and
+throws away any reply that ends in `finish_reason=length`, so the output must
+never be capped below a full summary (the router's default is 16384 for that
+reason). What can be bounded is the thinking:
 
 ```yaml
 auxiliary:
   compression:
     extra_body:
-      chat_template_kwargs:
-        enable_thinking: false
+      reasoning_budget_tokens: 1024
 ```
 
-> Not verified yet on this stack: it depends on ornith's chat template
-> reading `enable_thinking`. Check that the next compression logs no
-> `reasoning fields` warning and finishes well under a minute before
-> relying on it.
+Measured on a 26,546-token summary prompt with `scripts/bench-summary.py`
+(n=2 per mode; raw rows in
+[`evidence/2026-10-08-summary-reasoning.jsonl`](evidence/2026-10-08-summary-reasoning.jsonl)):
+
+| Reasoning | Wall | Output tokens | Summary |
+|---|---:|---:|---|
+| unbounded (default) | 328 – 856 s | 4,247 – 8,488 | detailed, correct |
+| `reasoning_budget_tokens: 2048` | 284 – 362 s | 3,684 – 4,661 | detailed, correct |
+| **`reasoning_budget_tokens: 1024`** | **197 – 266 s** | 2,592 – 3,456 | **detailed, correct** |
+| `enable_thinking: false` | 46 – 100 s | 617 – 1,332 | uneven: one run summarised its own instructions |
+
+The 856 s run includes reading the prompt cold (168 s); the others reuse it.
+Thinking off is the fastest, but one of its two summaries kept almost nothing
+of the conversation, and a bad summary is worse than a slow one: Hermes
+replaces the middle of the session with it.
+
+**End to end, with both fixes** (router cap 16384, reasoning budget 1024),
+15 Hermes turns of ~2K tokens each: compression fired at 39,530 tokens, the
+summary call went out at 17:36:47 and was committed at 17:40:54 — **4 min 7 s,
+complete, no stall** (13 → 9 messages). Timeline:
+[`evidence/2026-10-08-hermes-compression-e2e.log`](evidence/2026-10-08-hermes-compression-e2e.log).
+
+**Leave headroom above the post-compaction floor.** Hermes keeps a verbatim
+tail of at least ~10K tokens on top of its ~21K fixed prompt, so a compaction
+here lands at ~34–36K. With turns as large as the test's, the first attempt had
+nothing worth summarising (refused: the summary would have grown the
+transcript) and the second only went from ~37.6K to ~35.6K. Two weak
+compactions latch Hermes' anti-thrash breaker and automatic compression stops
+for that session. A real session with many small messages (2026-10-07:
+115 → 37 messages) does not hit it; if yours does, raise `threshold_tokens`
+rather than lowering the tail.
+
+**The next turn re-reads the summary and the tail.** At each compaction
+Hermes rebuilds its system prompt and swaps the middle of the conversation for
+the summary, so the turn after it re-reads from there — 19,976 of 39,283
+tokens were reused in the run above. Expect one slow turn (~1–2 min) after
+each compaction; the router keeps the conversation cached across the summary
+call itself (`scripts/repro-agent-stall.py --only agent`: 104 tokens re-read
+after a side request on a 34K-token conversation).
 
 ## Other consumers
 

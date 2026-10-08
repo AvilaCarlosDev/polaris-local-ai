@@ -7,6 +7,8 @@ Runs ON the CT, against the router on localhost and llama-server's /slots.
                does llama-server keep generating for nobody?   (plain + SSE)
   eviction     a side request (a summary) lands while a long conversation is
                cached; how much of the conversation is re-read afterwards?
+  agent        the same, shaped like an agent turn (reply without reasoning
+               plus a new question), with and without the side request
 
     python3 scripts/repro-agent-stall.py --model ornith-1.5-9b-q4_k_m
     python3 scripts/repro-agent-stall.py --only disconnect --give-up 8
@@ -100,10 +102,39 @@ def check_eviction(key, model, chars):
             "reread_s": round(t.get("prompt_ms", 0) / 1000, 1), "wall_s": round(wall, 1)}
 
 
+def check_agent_turn(key, model, chars, side):
+    """Like check_eviction, but shaped like an agent turn: the model reasons,
+    the next request carries its reply *without* the reasoning plus a new
+    question, and (with `side`) a summary request lands in between. A hybrid
+    model (ornith is qwen35) can only resume from a saved checkpoint, so this
+    is the case an exact-repeat request does not exercise."""
+    text = ""
+    for path in ("docs/BENCHMARKS.md", "docs/TROUBLESHOOTING.md", "router.py", "setup.sh"):
+        with open(path, encoding="utf-8") as f:
+            text += f.read()
+    while len(text) < chars:
+        text += text
+    convo = [{"role": "system", "content": "Reference:\n" + text[:chars]},
+             {"role": "user", "content": "One sentence: what is this repository?"}]
+    _, first = chat(key, model, convo, max_tokens=600)
+    reply = first["choices"][0]["message"].get("content") or ""
+    if side:
+        summary = [{"role": "user", "content": "Summarise this:\n" + text[: chars // 3]}]
+        chat(key, model, summary, max_tokens=16)
+    convo += [{"role": "assistant", "content": reply},
+              {"role": "user", "content": "And which file holds the router?"}]
+    wall, again = chat(key, model, convo, max_tokens=16)
+    t = again.get("timings", {})
+    return {"check": "agent_turn", "side_request": side,
+            "conversation_tokens": again.get("usage", {}).get("prompt_tokens"),
+            "reread_tokens": t.get("prompt_n"),
+            "reread_s": round(t.get("prompt_ms", 0) / 1000, 1), "wall_s": round(wall, 1)}
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--model", default="ornith-1.5-9b-q4_k_m")
-    p.add_argument("--only", choices=["disconnect", "eviction"])
+    p.add_argument("--only", choices=["disconnect", "eviction", "agent"])
     p.add_argument("--give-up", type=float, default=8.0,
                    help="seconds before the client hangs up")
     p.add_argument("--chars", type=int, default=64500,
@@ -115,6 +146,9 @@ def main():
             print(json.dumps(check_disconnect(key, args.model, stream, args.give_up)), flush=True)
     if args.only in (None, "eviction"):
         print(json.dumps(check_eviction(key, args.model, args.chars)), flush=True)
+    if args.only in (None, "agent"):
+        for side in (False, True):
+            print(json.dumps(check_agent_turn(key, args.model, args.chars, side)), flush=True)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,8 @@
+{"thinking": "on", "prompt_tokens": 26546, "completion_tokens": 8488, "reasoning_chars": 16597, "content_chars": 7296, "finish_reason": "stop", "wall_s": 856.2, "rep": 1}
+{"thinking": "off", "prompt_tokens": 26548, "completion_tokens": 617, "reasoning_chars": 0, "content_chars": 2597, "finish_reason": "stop", "wall_s": 46.3, "rep": 1}
+{"thinking": "on", "prompt_tokens": 26546, "completion_tokens": 4247, "reasoning_chars": 10041, "content_chars": 5017, "finish_reason": "stop", "wall_s": 328.5, "rep": 2}
+{"thinking": "off", "prompt_tokens": 26548, "completion_tokens": 1332, "reasoning_chars": 0, "content_chars": 4025, "finish_reason": "stop", "wall_s": 100.3, "rep": 2}
+{"thinking": "budget:1024", "prompt_tokens": 26546, "completion_tokens": 3456, "reasoning_chars": 4184, "content_chars": 6854, "finish_reason": "stop", "wall_s": 266.0, "rep": 1}
+{"thinking": "budget:2048", "prompt_tokens": 26546, "completion_tokens": 4661, "reasoning_chars": 7696, "content_chars": 7366, "finish_reason": "stop", "wall_s": 361.8, "rep": 1}
+{"thinking": "budget:1024", "prompt_tokens": 26546, "completion_tokens": 2592, "reasoning_chars": 4801, "content_chars": 4642, "finish_reason": "stop", "wall_s": 197.4, "rep": 2}
+{"thinking": "budget:2048", "prompt_tokens": 26546, "completion_tokens": 3684, "reasoning_chars": 5898, "content_chars": 4741, "finish_reason": "stop", "wall_s": 283.5, "rep": 2}

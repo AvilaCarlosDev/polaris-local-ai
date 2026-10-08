@@ -186,7 +186,10 @@ is slowest.
   under `_load_lock`, so the extra slots never bought real concurrency — they
   only split the KV. With one slot, a side request parks the conversation in
   llama-server's RAM prompt cache and it comes back intact.
-- Hermes: `compression.threshold_tokens: 36000`, `protect_last_n: 10`.
+- Hermes: `compression.threshold_tokens: 36000`, `protect_last_n: 10`, and
+  `auxiliary.compression.extra_body.reasoning_budget_tokens: 1024` — the
+  summary drops from 5–14 min to 3–4.5 min with the same detail. See
+  [HERMES.md](HERMES.md#context-compression-on-a-64k-local-model).
 
 **Measured before and after** with `scripts/repro-agent-stall.py` on the CT
 (client gives up after 8 s; side request of 18K tokens):
@@ -196,6 +199,7 @@ is slowest.
 | Server still busy after a plain request is abandoned | **124.2 s** | **0.5 s** |
 | Server still busy after a streamed request is abandoned | **103.6 s** | **0.5 s** |
 | 55,260-token conversation re-read after a side request | **55,260 tok / 448.4 s** | **4 tok / 0.2 s** |
+| 34K-token agent turn (reply without reasoning + new question) after a side request | — | **104 tok / 1.5 s** |
 
 At 20K tokens of conversation the eviction does not happen with either
 setting (19.6K + 7.4K fit in 64K cells) — it bites near the window limit,
@@ -280,17 +284,21 @@ instead of prose.
 
 ---
 
-## `BrokenPipeError` in the router log
+## `cliente desconectado: upstream cancelado` in the router log
 
 ```
-File "/opt/ia/router.py", line 546, in do_POST
-    self.wfile.write(data)
-BrokenPipeError: [Errno 32] Broken pipe
+[router] cliente desconectado: upstream cancelado (/v1/chat/completions)
 ```
 
-The client disconnected before the response finished — usually a CLI or browser
-timeout during a long generation. Harmless to the server. Raise the client's
-timeout, or generate asynchronously.
+The client hung up before the reply finished — usually a CLI or agent
+timeout during a long generation. Since the compression fix this is handled:
+`forward_live()` closes the upstream connection and llama-server cancels the
+task within ~0.5 s, so nothing keeps generating for nobody. If it shows up on
+every long request, the client's timeout is too short for this card: raise
+it, or stream.
+
+Older routers, and the image endpoints today, log the same event as a
+`BrokenPipeError` traceback in `do_POST`. Harmless to the server.
 
 ---
 

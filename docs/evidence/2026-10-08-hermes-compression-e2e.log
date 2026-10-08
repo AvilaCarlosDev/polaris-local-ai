@@ -1,0 +1,28 @@
+# Hermes end-to-end, 2026-10-08 17:26-17:49 (router cap 16384 + reasoning_budget_tokens 1024)
+# 15 turns of ~2K tokens each, threshold_tokens 36000, protect_last_n 10. Extracted from ~/.hermes/logs/agent.log.
+2026-10-08 17:28:33,024 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=22951 out=4 total=22955 latency=144.6s
+2026-10-08 17:29:01,171 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=25701 out=4 total=25705 latency=22.3s cache=22954/25701 (89%)
+2026-10-08 17:29:27,314 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=28157 out=4 total=28161 latency=20.1s cache=25704/28157 (91%)
+2026-10-08 17:29:56,546 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=30872 out=4 total=30876 latency=22.8s cache=28160/30872 (91%)
+2026-10-08 17:30:22,609 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=33205 out=4 total=33209 latency=20.2s cache=30875/33205 (93%)
+2026-10-08 17:30:49,924 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=35465 out=4 total=35469 latency=20.7s cache=33208/35465 (94%)
+2026-10-08 17:30:56,179 INFO [20261008_172605_6fb8fb] agent.conversation_loop: Pre-API compression: ~37,556 request tokens >= 36,000 threshold (context=65,536, attempt=1/3)
+2026-10-08 17:30:56,181 INFO agent.conversation_compression: context compression started: session=20261008_172605_6fb8fb messages=13 tokens=~37,556 model=ornith-1.5-9b-q4_k_m focus=None
+2026-10-08 17:30:56,206 INFO agent.context_compressor: Compression summary call dispatched: model=ornith-1.5-9b-q4_k_m prompt_chars=8,127 prompt_build_ms=0
+2026-10-08 17:32:19,153 WARNING agent.conversation_compression: Compression refused: compressed transcript would be larger than the original (session=20261008_172605_6fb8fb, ~14,823 -> ~16,173 tokens); keeping the original transcr
+2026-10-08 17:32:19,161 WARNING [20261008_172605_6fb8fb] agent.conversation_loop: Pre-API compression made insufficient progress: ~37,556 -> ~37,556 request tokens; skipping additional preflight passes
+2026-10-08 17:36:41,068 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=37441 out=4 total=37445 latency=261.9s
+2026-10-08 17:36:47,360 INFO [20261008_172605_6fb8fb] agent.turn_context: Preflight compression: ~39,530 tokens >= 36,000 threshold (model ornith-1.5-9b-q4_k_m, ctx 65,536)
+2026-10-08 17:36:47,362 INFO agent.conversation_compression: context compression started: session=20261008_172605_6fb8fb messages=15 tokens=~39,530 model=ornith-1.5-9b-q4_k_m focus=None
+2026-10-08 17:36:47,868 INFO agent.conversation_compression: context compression done: session=20261008_172605_6fb8fb messages=15->13 rough_tokens=~36,593 awaiting_real_usage=true
+2026-10-08 17:36:47,872 INFO agent.conversation_compression: context compression started: session=20261008_172605_6fb8fb messages=13 tokens=~36,593 model=ornith-1.5-9b-q4_k_m focus=None
+2026-10-08 17:36:47,903 INFO agent.context_compressor: Compression summary call dispatched: model=ornith-1.5-9b-q4_k_m prompt_chars=26,016 prompt_build_ms=12
+2026-10-08 17:40:54,808 INFO agent.conversation_compression: context compression done: session=20261008_172605_6fb8fb messages=13->9 rough_tokens=~35,587 awaiting_real_usage=true
+2026-10-08 17:43:21,226 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=37963 out=4 total=37967 latency=146.4s cache=19975/37963 (53%)
+2026-10-08 17:46:16,534 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=40276 out=4 total=40280 latency=168.4s cache=19975/40276 (50%)
+2026-10-08 17:46:53,631 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=43267 out=5 total=43272 latency=30.5s cache=40279/43267 (93%)
+2026-10-08 17:47:28,763 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=46036 out=5 total=46041 latency=29.0s cache=43271/46036 (94%)
+2026-10-08 17:48:01,000 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=48484 out=5 total=48489 latency=25.8s cache=46040/48484 (95%)
+2026-10-08 17:48:37,897 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=51235 out=5 total=51240 latency=30.5s cache=48488/51235 (95%)
+2026-10-08 17:49:08,914 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=53525 out=5 total=53530 latency=24.7s cache=51241/53525 (96%)
+2026-10-08 17:49:27,410 INFO [20261008_172605_6fb8fb] agent.conversation_loop: API call #1: model=ornith-1.5-9b-q4_k_m provider=custom in=53563 out=95 total=53658 latency=12.0s cache=53529/53563 (100%)
