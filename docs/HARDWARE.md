@@ -3,6 +3,10 @@
 What this stack needs, what it runs on, and — just as important — what it
 **cannot** do. Every claim here was checked on the machine it describes.
 
+This page describes **Venator**, the homelab box (the RX 580 + Proxmox LXC).
+The second machine, **Ossus** (a laptop with no discrete GPU), runs a
+portable subset in normal RAM — see [PORTABLE.md](PORTABLE.md).
+
 ## The machine
 
 | Component | Value |

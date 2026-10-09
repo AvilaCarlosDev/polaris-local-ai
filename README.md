@@ -64,6 +64,7 @@ along the way are in [`docs/`](docs/):
 - [BENCHMARKS.md](docs/BENCHMARKS.md) — tokens/second, cold vs warm, agent latency — measured
 - [MODELS.md](docs/MODELS.md) — which model for which job
 - [SETUP.md](docs/SETUP.md) — install from scratch
+- [PORTABLE.md](docs/PORTABLE.md) — the second machine: llama.cpp in normal RAM on a GPU-less laptop
 - [HERMES.md](docs/HERMES.md) — using it as an agent engine
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — the bugs we hit
 

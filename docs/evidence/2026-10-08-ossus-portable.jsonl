@@ -1,0 +1,16 @@
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "carga", "wall_s": 3.82}
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "warm", "rep": 0, "wall_s": 9.73, "prompt_n": 1, "predicted_n": 147, "tok_s": 15.119595482471986}
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "warm", "rep": 1, "wall_s": 9.98, "prompt_n": 1, "predicted_n": 147, "tok_s": 14.760092390090641}
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "warm", "rep": 2, "wall_s": 12.28, "prompt_n": 1, "predicted_n": 147, "tok_s": 11.954561856710493}
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "carga", "wall_s": 7.37}
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "warm", "rep": 0, "wall_s": 14.16, "prompt_n": 1, "predicted_n": 118, "tok_s": 8.331617755916499}
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "warm", "rep": 1, "wall_s": 14.61, "prompt_n": 1, "predicted_n": 118, "tok_s": 8.08046485463969}
+{"etiqueta": "igpu-vega-ngl99", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "warm", "rep": 2, "wall_s": 17.59, "prompt_n": 1, "predicted_n": 118, "tok_s": 6.694102570014735}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "carga", "wall_s": 5.12}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "warm", "rep": 0, "wall_s": 7.49, "prompt_n": 1, "predicted_n": 89, "tok_s": 11.919966634929756}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "warm", "rep": 1, "wall_s": 7.17, "prompt_n": 1, "predicted_n": 89, "tok_s": 12.455778447936403}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-coder-1.5b-instruct-q4_k_m", "fase": "warm", "rep": 2, "wall_s": 7.26, "prompt_n": 1, "predicted_n": 89, "tok_s": 12.26420327136473}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "carga", "wall_s": 9.03}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "warm", "rep": 0, "wall_s": 17.81, "prompt_n": 1, "predicted_n": 120, "tok_s": 6.7470564265400625}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "warm", "rep": 1, "wall_s": 18.24, "prompt_n": 1, "predicted_n": 120, "tok_s": 6.5763968695245625}
+{"etiqueta": "cpu-ram-normal", "modelo": "qwen2.5-vl-3b-instruct-q4_k_m", "fase": "warm", "rep": 2, "wall_s": 18.22, "prompt_n": 1, "predicted_n": 120, "tok_s": 6.592664104428685}

@@ -67,6 +67,7 @@ se rompió en el camino están en [`docs/`](docs/):
 - [BENCHMARKS.md](docs/BENCHMARKS.md) — tokens/segundo, cold vs warm, latencia de agente — medido
 - [MODELS.md](docs/MODELS.md) — qué modelo para cada tarea
 - [SETUP.md](docs/SETUP.md) — instalación desde cero
+- [PORTABLE.md](docs/PORTABLE.md) — la segunda máquina: llama.cpp en RAM normal, en una laptop sin GPU
 - [HERMES.md](docs/HERMES.md) — usarlo como motor de agentes
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — los bugs que encontramos
 
