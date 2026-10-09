@@ -5,9 +5,12 @@ Lee el campo "model" de cada request; si no es el que ya esta cargado, recarga
 el server con el pedido y recien entonces reenvia. Si ya esta cargado, reenvia
 directo (overhead ~0).
 """
+import http.client
 import json
 import os
 import re
+import select
+import socket
 import subprocess
 import sys
 import threading
@@ -16,6 +19,19 @@ import urllib.error
 import urllib.request
 
 UPSTREAM = "http://127.0.0.1:8080"
+UPSTREAM_ADDR = ("127.0.0.1", 8080)
+# Techo de salida para requests que no traen max_tokens. Hermes manda el
+# resumen de compresion SIN tope a proposito, y ornith llego a generar 9.898
+# tokens (552 s) en un resumen que debia ocupar ~3.000: el slot y el lock del
+# router quedaron tomados 10 min. 0 lo desactiva.
+# No bajarlo de 16384: Hermes pide resumenes de hasta 10K tokens y descarta
+# el que termina en finish_reason=length. Con 4096 ornith se gasto el tope
+# razonando (15K caracteres) y la compresion fallo. Lo que corta un pedido
+# abandonado es forward_live(), no este tope.
+DEFAULT_MAX_TOKENS = int(os.environ.get("IA_DEFAULT_MAX_TOKENS", "16384"))
+# Headers hop-by-hop: los maneja cada conexion, no se reenvian.
+HOP_HEADERS = {"host", "content-length", "connection", "accept-encoding",
+               "transfer-encoding", "keep-alive"}
 
 
 def _load_api_key():
@@ -385,6 +401,23 @@ def state_dir():
     return d
 
 
+def server_flags(model):
+    """Flags de llama-server para `model`, sin -m ni la key.
+
+    Separado de load() para testearlo sin systemd."""
+    extra = f"--mmproj {MMPROJ} " if "vl" in model else ""
+    # --parallel 1: con el default (4 slots) las 65.536 celdas de KV se
+    # comparten, y un request lateral (el resumen de compresion) desalojaba la
+    # conversacion: "failed to find 55298 available cells", 55K tokens
+    # releidos. El router ya serializa los chats con _load_lock, asi que los
+    # slots extra nunca daban paralelismo real.
+    return extra + (MODEL_ARGS.get(model) or (
+        f"--host 0.0.0.0 --port 8080 -ngl 99 -c {CTX} -ub 512 --parallel 1 "
+        "--cache-type-k q8_0 --cache-type-v q8_0 --threads 4 "
+        "--cache-reuse 4096 "
+    ))
+
+
 def load(model):
     slots_save(current())
     try:
@@ -394,17 +427,11 @@ def load(model):
     subprocess.run(["systemctl", "stop", "llama-server"],
                    capture_output=True, check=False)
     time.sleep(2)
-    extra = f"--mmproj {MMPROJ} " if "vl" in model else ""
-    flags = MODEL_ARGS.get(model) or (
-        f"--host 0.0.0.0 --port 8080 -ngl 99 -c {CTX} -ub 512 "
-        "--cache-type-k q8_0 --cache-type-v q8_0 --threads 4 "
-        "--cache-reuse 4096 "
-    )
+    flags = server_flags(model)
     unit = (
         "[Unit]\nDescription=llama.cpp server (router)\nAfter=network.target\n\n"
         "[Service]\nType=simple\n"
-        f"ExecStart={BIN} -m {MODELS[model]} {extra}"
-        f"{flags}"
+        f"ExecStart={BIN} -m {MODELS[model]} {flags}"
         f"--slot-save-path {SLOT_DIR} --api-key {API_KEY} --jinja\n"
         "Restart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n"
     )
@@ -508,6 +535,109 @@ def forward(method, path, body, headers):
         # 502 dice que el problema es llama-server, no el cliente.
         body = json.dumps({"error": {"message": f"llama-server no responde: {e}"}}).encode()
         return 502, {"Content-Type": "application/json"}, body
+
+
+def cap_max_tokens(payload):
+    """Pone DEFAULT_MAX_TOKENS si el request no trae ningun tope de salida.
+
+    Solo cuando falta: un max_tokens explicito del cliente se respeta siempre.
+    Devuelve True si toco el payload (hay que re-serializar el body)."""
+    if DEFAULT_MAX_TOKENS <= 0 or not isinstance(payload, dict) or not payload:
+        return False
+    if any(payload.get(k) for k in ("max_tokens", "max_completion_tokens", "n_predict")):
+        return False
+    payload["max_tokens"] = DEFAULT_MAX_TOKENS
+    return True
+
+
+def client_gone(sock):
+    """True si el cliente cerro su lado (EOF al espiar el socket sin consumir).
+
+    Datos pendientes (un request pipelineado) no cuentan como cierre."""
+    try:
+        readable, _, _ = select.select([sock], [], [], 0)
+        if not readable:
+            return False
+        return sock.recv(1, socket.MSG_PEEK) == b""
+    except (OSError, ValueError):
+        return True
+
+
+def forward_live(handler, path, body, headers, poll=1.0):
+    """Reenvia un POST a llama-server sin bufferizar y lo cancela si el cliente se va.
+
+    El forward() original hacia r.read() de la respuesta entera: el cliente no
+    veia ni un token de un SSE hasta el final (Hermes lo lee como "sin
+    progreso") y, si se rendia, llama-server seguia generando para nadie con
+    el lock del router tomado. Aca un hilo vigila el socket del cliente; si
+    cierra, se corta la conexion upstream y llama-server cancela la tarea.
+    Devuelve "ok", "cancelled" o "error"."""
+    conn = http.client.HTTPConnection(*UPSTREAM_ADDR, timeout=1800)
+    done = threading.Event()
+    gone = threading.Event()
+
+    def watch():
+        while not done.wait(poll):
+            if client_gone(handler.connection):
+                gone.set()
+                try:
+                    conn.sock.shutdown(socket.SHUT_RDWR)
+                except (OSError, AttributeError):
+                    pass
+                return
+
+    sent = False
+    try:
+        conn.request("POST", path, body=body,
+                     headers={k: v for k, v in headers.items() if k.lower() not in HOP_HEADERS})
+        threading.Thread(target=watch, daemon=True).start()
+        resp = conn.getresponse()
+        if "text/event-stream" in (resp.getheader("Content-Type") or ""):
+            handler.send_response(resp.status)
+            for k, v in resp.getheaders():
+                if k.lower() not in HOP_HEADERS:
+                    handler.send_header(k, v)
+            handler.send_header("Transfer-Encoding", "chunked")
+            handler.end_headers()
+            sent = True
+            while True:
+                chunk = resp.read1(65536)
+                if not chunk:
+                    break
+                handler.wfile.write(f"{len(chunk):X}\r\n".encode() + chunk + b"\r\n")
+                handler.wfile.flush()
+            handler.wfile.write(b"0\r\n\r\n")
+            handler.wfile.flush()
+        else:
+            data = resp.read()
+            handler.send_response(resp.status)
+            for k, v in resp.getheaders():
+                if k.lower() not in HOP_HEADERS:
+                    handler.send_header(k, v)
+            handler.send_header("Content-Length", str(len(data)))
+            handler.end_headers()
+            sent = True
+            handler.wfile.write(data)
+        return "ok"
+    except (OSError, http.client.HTTPException) as e:
+        if gone.is_set() or isinstance(e, (BrokenPipeError, ConnectionResetError)):
+            sys.stderr.write(f"[router] cliente desconectado: upstream cancelado ({path})\n")
+            sys.stderr.flush()
+            return "cancelled"
+        if not sent:
+            err = json.dumps({"error": {"message": f"llama-server no responde: {e}"}}).encode()
+            try:
+                handler.send_response(502)
+                handler.send_header("Content-Type", "application/json")
+                handler.send_header("Content-Length", str(len(err)))
+                handler.end_headers()
+                handler.wfile.write(err)
+            except OSError:
+                pass
+        return "error"
+    finally:
+        done.set()
+        conn.close()
 
 
 def main():
@@ -713,6 +843,8 @@ def main():
                     return
 
                 want = resolve(asked)
+                if cap_max_tokens(payload):
+                    body = json.dumps(payload).encode()
                 # El lock cubre ensure() Y forward(), no solo la carga: si se
                 # suelta entre una y otra, otro hilo reinicia llama-server con
                 # otro modelo mientras este reenvia la peticion, y el cliente
@@ -736,7 +868,10 @@ def main():
                             self.end_headers()
                             self.wfile.write(b'{"error":{"message":"no se pudo cargar"}}'[:48])
                             return
-                    st, hd, data = forward("POST", self.path, body, dict(self.headers))
+                    # En vivo y cancelable: libera el lock apenas el cliente
+                    # se va, en vez de esperar a que llama termine para nadie.
+                    forward_live(self, self.path, body, dict(self.headers))
+                    return
             else:
                 # [fix-st] todo POST que no sea chat/completions llegaba ahi
                 # sin `st` asignado y reventaba el handler. Reenviar tal cual

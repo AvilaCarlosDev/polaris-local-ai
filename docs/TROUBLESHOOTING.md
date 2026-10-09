@@ -128,6 +128,92 @@ that cost on every other request. Pick one and stay on it.
 
 ---
 
+## The agent stalls for 300 s while compressing context
+
+**Symptom.** In a long Hermes session, `agent.log` shows:
+
+```
+Compression summary call dispatched: model=ornith-1.5-9b-q4_k_m prompt_chars=30,844
+Context compression made no progress for 300.0s ... continuing without compression
+```
+
+Five times on 2026-10-07 — 25 minutes of waiting — and afterwards the
+session dropped to `APIConnectionError` with ~60K tokens uncompressed. Disk,
+RAM and the network were not involved; the llama-server log for the same
+minutes tells the whole story, and it is four separate problems.
+
+**1. The summary never stopped.** The summary prompt was small — 9,191
+tokens, read in 51.6 s. Then Ornith generated **9,898 tokens over 552 s**
+for a summary budgeted at ~3K. Hermes sends the summary call without
+`max_tokens` on purpose, so nothing bounded it.
+
+**2. Nobody told llama-server the client had left.** Hermes gave up at
+300 s; the server kept generating until 604 s, holding the router's lock, so
+every other request queued behind a reply nobody would read. `forward()`
+read the whole upstream response before writing a byte, so it could not
+notice the hang-up — and for streamed calls the client saw no tokens at all
+until the end, which is exactly what Hermes reads as "no progress".
+
+**3. The side request evicted the conversation.** With the default four
+slots, the 65,536 KV cells are shared. The summary took a second slot, and
+when the conversation came back:
+
+```
+E state_read_meta: failed to find 55298 available cells in kv cache
+W slot  prompt_load: id  0 | task -1 | failed to load prompt from cache
+```
+
+— 55K tokens re-read from scratch, several minutes, then the connection error.
+
+**4. The threshold in the config was ignored.** See
+[HERMES.md](HERMES.md#context-compression-on-a-64k-local-model): with a 64K
+window `threshold: 0.35` still fires at 55,705 tokens, where everything above
+is slowest.
+
+**Fix** (router):
+
+- `forward_live()` streams upstream bytes as they arrive and watches the
+  client socket; when the client closes, it shuts the upstream connection and
+  llama-server cancels the task. Plain and SSE requests alike — Hermes'
+  summary call is not streamed.
+- `DEFAULT_MAX_TOKENS = 16384` is added only to requests that carry no output
+  cap (`IA_DEFAULT_MAX_TOKENS=0` disables it). An explicit `max_tokens`
+  always wins. Do not go lower: Hermes discards a summary that stops on
+  `finish_reason=length`, and with 4096 ornith used the whole cap on
+  reasoning — `Failed to generate context summary: ... truncated
+  (finish_reason=length)` in `~/.hermes/logs/agent.log`.
+- Every model runs with `--parallel 1`. The router already serialised chats
+  under `_load_lock`, so the extra slots never bought real concurrency — they
+  only split the KV. With one slot, a side request parks the conversation in
+  llama-server's RAM prompt cache and it comes back intact.
+- Hermes: `compression.threshold_tokens: 36000`, `protect_last_n: 10`, and
+  `auxiliary.compression.extra_body.reasoning_budget_tokens: 1024` — the
+  summary drops from 5–14 min to 3–4.5 min with the same detail. See
+  [HERMES.md](HERMES.md#context-compression-on-a-64k-local-model).
+
+**Measured before and after** with `scripts/repro-agent-stall.py` on the CT
+(client gives up after 8 s; side request of 18K tokens):
+
+| Check | Before | After |
+|---|---:|---:|
+| Server still busy after a plain request is abandoned | **124.2 s** | **0.5 s** |
+| Server still busy after a streamed request is abandoned | **103.6 s** | **0.5 s** |
+| 55,260-token conversation re-read after a side request | **55,260 tok / 448.4 s** | **4 tok / 0.2 s** |
+| 34K-token agent turn (reply without reasoning + new question) after a side request | — | **104 tok / 1.5 s** |
+
+At 20K tokens of conversation the eviction does not happen with either
+setting (19.6K + 7.4K fit in 64K cells) — it bites near the window limit,
+which is where an agent's compression runs. Raw rows:
+[`evidence/2026-10-08-agent-stall.jsonl`](evidence/2026-10-08-agent-stall.jsonl).
+CI covers the router side without a GPU: `tests/test_forward.py` puts a fake
+llama-server behind `forward_live()` and asserts it is hung up on within 3 s.
+
+**One saved KV per model now lives in slot 0.** Files saved with the old
+4-slot layout carry the slot id in their name (`<model>-2.bin`); rename one
+to `<model>-0.bin` to keep it, or let the next swap write a fresh one.
+
+---
+
 ## The agent takes two minutes to answer the first question
 
 **Symptom.** `hermes chat -q "anything"` blocks for 130–160 s, while the same
@@ -198,17 +284,21 @@ instead of prose.
 
 ---
 
-## `BrokenPipeError` in the router log
+## `cliente desconectado: upstream cancelado` in the router log
 
 ```
-File "/opt/ia/router.py", line 546, in do_POST
-    self.wfile.write(data)
-BrokenPipeError: [Errno 32] Broken pipe
+[router] cliente desconectado: upstream cancelado (/v1/chat/completions)
 ```
 
-The client disconnected before the response finished — usually a CLI or browser
-timeout during a long generation. Harmless to the server. Raise the client's
-timeout, or generate asynchronously.
+The client hung up before the reply finished — usually a CLI or agent
+timeout during a long generation. Since the compression fix this is handled:
+`forward_live()` closes the upstream connection and llama-server cancels the
+task within ~0.5 s, so nothing keeps generating for nobody. If it shows up on
+every long request, the client's timeout is too short for this card: raise
+it, or stream.
+
+Older routers, and the image endpoints today, log the same event as a
+`BrokenPipeError` traceback in `do_POST`. Harmless to the server.
 
 ---
 
