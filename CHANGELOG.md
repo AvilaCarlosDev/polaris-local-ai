@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **`docs/PORTABLE.md`** — the second machine, **Ossus** (Ryzen 5 PRO 4650U,
+  22 GB, no discrete GPU), where a text-only llama.cpp runs in **normal RAM**
+  (`n-gpu-layers = 0`, systemd user unit on port 8091). Measured against the
+  Vega iGPU with `scripts/bench-portable.py`: CPU 12.3 / 6.6 tok/s vs iGPU
+  14.8 / 8.1 tok/s on the 1.5 B and 3 B models — the iGPU's ~20% does not beat
+  sharing the desktop's RAM, so the preset stays CPU. Raw rows in
+  `docs/evidence/2026-10-08-ossus-portable.jsonl`. `docs/HARDWARE.md` now
+  names the machine it describes (Venator) and links there.
+
 - **`scripts/bench-slots.py`** — reproducible A/B of the KV slot cache: same
   model, same 19,648-token prompt, same restart, with and without the saved
   slot file. Re-measured on 2026-10-08 (n=3): a swap goes from **165.8 s to
