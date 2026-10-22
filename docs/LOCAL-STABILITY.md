@@ -23,7 +23,7 @@ Re-enable only image services that were enabled before this change.
 
 ## Verified on 2026-10-22
 
-- 38 pytest checks passed; ruff, ShellCheck and Bash syntax checks passed.
+- 40 pytest checks passed; ruff, ShellCheck and Bash syntax checks passed.
 - All six text/vision model IDs answered sequential text requests; Ornith was left loaded.
   This does not validate image input or agent tool quality on every model.
 - OpenCode session `ses_e9aa14f93ffe3zb9dgvSOFxuoy` executed `pwd` and returned
@@ -53,3 +53,16 @@ Start a new client session after this repair. Existing transcripts above the new
 window were preserved and were not silently truncated or rewritten. Server-side
 cache is temporary; conversation files and durable agent memory remain separate.
 
+
+## Publication regression checks
+
+An HTTP-level test found that a healthy, already-selected model bypassed
+`ensure()`. That skipped deferred KV restoration after image generation and
+image-backend cleanup. Every text request now runs `ensure()` under the load lock.
+The test failed before the fix and passes afterwards.
+
+A second HTTP check reproduced a client timeout on load failure: the 503 body
+was shorter than its declared Content-Length. The response now uses the shared
+JSON writer, which computes its actual length. Both success and failure paths
+are covered by the real HTTP test. Same-day performance and transition results
+are recorded separately so historical numbers are not overwritten.

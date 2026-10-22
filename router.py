@@ -861,21 +861,18 @@ def main():
                     if want != current() or not healthy():
                         sys.stderr.write(f"[router] cargando {want} (estaba {current() or 'nada'})\n")
                         sys.stderr.flush()
-                        try:
-                            ready = ensure(want)
-                        except Exception as e:
-                            # Sin esto la excepcion sube al handler,
-                            # socketserver cierra el socket sin responder y el
-                            # cliente espera hasta su timeout.
-                            sys.stderr.write(f"[router] fallo ensure({want}): {e}\n")
-                            sys.stderr.flush()
-                            ready = False
-                        if not ready:
-                            self.send_response(503)
-                            self.send_header("Content-Length", "48")
-                            self.end_headers()
-                            self.wfile.write(b'{"error":{"message":"no se pudo cargar"}}'[:48])
-                            return
+                    try:
+                        ready = ensure(want)
+                    except Exception as e:
+                        # Sin esto la excepcion sube al handler,
+                        # socketserver cierra el socket sin responder y el
+                        # cliente espera hasta su timeout.
+                        sys.stderr.write(f"[router] fallo ensure({want}): {e}\n")
+                        sys.stderr.flush()
+                        ready = False
+                    if not ready:
+                        self._json(503, {"error": {"message": "no se pudo cargar"}})
+                        return
                     # En vivo y cancelable: libera el lock apenas el cliente
                     # se va, en vez de esperar a que llama termine para nadie.
                     forward_live(self, self.path, body, dict(self.headers))
