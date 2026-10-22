@@ -7,8 +7,12 @@ weights before resuming text after image generation. Disable image services at b
 the router starts the selected image service on demand.
 
 Client input plus output must fit the context. Configure custom OpenCode models
-with context 65536 and output 8192; restrict enabled providers to the local provider so auxiliary requests cannot
-fall back to cloud services. Leave small_model unset to follow the selected model. Hermes requires at least 64000 context tokens: keep 65536, use the
+with context 65536 and output 8192. Keep built-in and cloud providers available:
+do not set an `enabled_providers` allowlist to restrict OpenCode to local models.
+Users can select any available provider/model; these limits apply only to the
+custom local models. Leave `small_model` unset rather than pinning it to a local
+model; OpenCode retains its normal auxiliary-model selection.
+Hermes requires at least 64000 context tokens: keep 65536, use the
 local provider directly and keep compression on the same model. Do not resume an
 uncompacted 123K-token transcript against a 64K server; preserve the original
 session and begin a fresh one with a short handoff.
