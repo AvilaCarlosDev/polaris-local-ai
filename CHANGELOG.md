@@ -6,7 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Text models use automatic layer fitting with a 64K context and one slot.
+  Image backends are stopped before text inference and after image generation;
+  the installer leaves image services disabled at boot for on-demand loading.
+
 ### Added
+
+- `scripts/bench-release.py` and `docs/RELEASE-COMPARISON.md`: same-day cold/warm
+  router A/B, sampled memory and long-context image→text checks with raw evidence.
 
 - **`docs/PORTABLE.md`** — the second machine, **Ossus** (Ryzen 5 PRO 4650U,
   22 GB, no discrete GPU), where a text-only llama.cpp runs in **normal RAM**
@@ -39,6 +48,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   re-read after a side request on a 34K-token conversation.
 
 ### Fixed
+
+- Healthy same-model requests now run deferred slot restoration before forwarding,
+  preserving the conversation cache after image generation even when the caller
+  waits for the restarted server to become healthy.
+- Load failures return a complete JSON 503 with the correct Content-Length,
+  preventing clients from waiting for bytes that will never arrive.
 
 - **Agent context compression no longer stalls for 300 s.** Diagnosed from
   the llama-server log of a real Hermes session (five 300 s stalls in one

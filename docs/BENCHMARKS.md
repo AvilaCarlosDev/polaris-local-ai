@@ -6,6 +6,10 @@ All numbers below were measured on the machine described in
 
 Nothing here is quoted from a vendor or another project.
 
+The original tables below describe the October 6–8 runs. See the
+[October 22 controlled release comparison](RELEASE-COMPARISON.md) for the
+same-day router A/B, memory samples and image→text regression checks.
+
 > **Just trying it out?** Read [EXPECTATIONS.md](EXPECTATIONS.md) first — it
 > turns these tables into plain expectations for your first hour of use.
 
@@ -98,7 +102,7 @@ faster than the same model after a swap** (11.0 → 3.1 s for the 1.5 B coder,
 
 ## Why the large model must not be forced into VRAM
 
-llama.cpp's default template pins `-ngl 99 --threads 4`. On the 18.6 GB MoE
+The earlier router template pinned `-ngl 99 --threads 4`. On the 18.6 GB MoE
 that fills VRAM to roughly 99.4% and the card thrashes. Measured while tuning
 the router:
 
@@ -124,8 +128,10 @@ Both run through stable-diffusion.cpp on the same Vulkan device, with a 6 GB
 VRAM budget.
 
 The two models **share port 8082 and cannot run simultaneously** — the router
-stops one and starts the other per request. That swap is the "with unit swap"
-column. For repeated generation in one model, stay on it.
+stops one and starts the other per request. The historical table above kept the
+selected image backend resident. The current release unloads image weights after
+generation before resuming text, so repeated image requests pay a reload cost.
+See the release comparison for that tradeoff.
 
 ## Why stable-diffusion.cpp and not ComfyUI
 

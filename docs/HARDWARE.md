@@ -46,8 +46,9 @@ vendor SDK, no root-level driver install.
   [BENCHMARKS.md](BENCHMARKS.md) for what that costs.
 - The models that live almost entirely in VRAM (the 1.5 B and 3 B ones) are the
   fast ones. The 18.6 GB MoE spills into RAM and is slower for it.
-- Image generation gets a **6 GB budget** (`--max-vram 6`) so it does not fight
-  the text model for memory.
+- Image generation gets a **6 GB budget** (`--max-vram 6`). The router releases
+  the text model before generating, then stops image backends before resuming
+  text, so their weights do not remain resident together.
 
 32 GB of RAM is what makes the 30 B MoE usable at all.
 
