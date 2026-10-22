@@ -1,0 +1,85 @@
+{
+  "python": "3.13.5 (main, Aug 10 2026, 12:06:59) [GCC 14.2.0]",
+  "llama_version": "version: 0.5.0-dev (build 1, commit 0c1e570)\nbuilt with GNU 14.2.0 for Linux x86_64",
+  "mesa": "mesa-vulkan-drivers:amd64\t25.0.7-2+deb13u1",
+  "models": [
+    {
+      "path": "/opt/ia/models/sd15-Q5_1.gguf",
+      "bytes": 1640564256,
+      "mtime_ns": 1790851977999876616
+    },
+    {
+      "path": "/opt/ia/models/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
+      "bytes": 844757728,
+      "mtime_ns": 1790850343909603329
+    },
+    {
+      "path": "/opt/ia/models/qwen2.5-7b-instruct-q4_k_m.gguf",
+      "bytes": 4683074240,
+      "mtime_ns": 1790830045853598309
+    },
+    {
+      "path": "/opt/ia/models/t5xxl-Q4_0.gguf",
+      "bytes": 2752841312,
+      "mtime_ns": 1791081124174518953
+    },
+    {
+      "path": "/opt/ia/models/sd3.5_medium-Q5_1.gguf",
+      "bytes": 2496550720,
+      "mtime_ns": 1791081124954532251
+    },
+    {
+      "path": "/opt/ia/models/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "bytes": 491400032,
+      "mtime_ns": 1790828907066762774
+    },
+    {
+      "path": "/opt/ia/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+      "bytes": 4683074336,
+      "mtime_ns": 1790850148661049422
+    },
+    {
+      "path": "/opt/ia/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+      "bytes": 1117320768,
+      "mtime_ns": 1790858137400925455
+    },
+    {
+      "path": "/opt/ia/models/clip_l-Q4_0.gguf",
+      "bytes": 69384832,
+      "mtime_ns": 1791081076568707321
+    },
+    {
+      "path": "/opt/ia/models/clip_g-Q4_0.gguf",
+      "bytes": 391439360,
+      "mtime_ns": 1791081097609066038
+    },
+    {
+      "path": "/opt/ia/models/qwen2.5-vl-3b-instruct-q4_k_m.gguf",
+      "bytes": 1929901056,
+      "mtime_ns": 1790850344912616389
+    },
+    {
+      "path": "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf",
+      "bytes": 5780090816,
+      "mtime_ns": 1791081208886963212
+    },
+    {
+      "path": "/var/cache/ai/models/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
+      "bytes": 18632183808,
+      "mtime_ns": 1791118625670194959
+    }
+  ],
+  "baseline_commit": "9e11cc9",
+  "candidate_commit": "0acf95a",
+  "text_repetitions_per_state": 2,
+  "image_repetitions_per_model": 1,
+  "historical_exact_text_prompt_available": false,
+  "paired_run_uses_same_machine_and_binaries": true,
+  "gpu_link_observation": {
+    "under_inference": false,
+    "speed": "2.5 GT/s PCIe",
+    "width": "16",
+    "runtime_status": "suspended"
+  },
+  "engine_sha256": "f635b54a3d133b680cdd58008520ffd6cb1864cbbc7ee873bd084b21f5b2d8c5"
+}
