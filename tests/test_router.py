@@ -112,3 +112,35 @@ def test_state_file_is_persistent():
     # y slots_save() se saltaba el save: el KV caliente se perdia sin log.
     assert router.STATE.startswith("/var/lib/")
     assert not router.STATE.startswith("/run/")
+
+
+def test_text_models_allow_memory_autofit():
+    for model in router.MODELS:
+        flags = router.server_flags(model)
+        assert "-ngl" not in flags
+        assert "-c 65536" in flags
+        assert "--parallel 1" in flags
+
+
+def test_cached_text_request_releases_image_backends(monkeypatch):
+    events = []
+    monkeypatch.setattr(router, "stop_image_backends", lambda: events.append("stop-images"))
+    monkeypatch.setattr(router, "current", lambda: "ornith")
+    monkeypatch.setattr(router, "healthy", lambda: True)
+    router._restore_pending.clear()
+    assert router.ensure("ornith")
+    assert events == ["stop-images"]
+
+
+def test_image_stop_failure_blocks_text_load(monkeypatch):
+    import subprocess
+
+    import pytest
+
+    def fail():
+        raise subprocess.CalledProcessError(1, "systemctl")
+
+    monkeypatch.setattr(router, "stop_image_backends", fail)
+    monkeypatch.setattr(router, "load", lambda model: pytest.fail("unsafe text load"))
+    with pytest.raises(subprocess.CalledProcessError):
+        router.ensure("ornith")

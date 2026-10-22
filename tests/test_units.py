@@ -121,3 +121,10 @@ def test_check_mode_parses_and_reports_every_unit():
     assert "unknown option" not in proc.stdout
     for unit in UNITS:
         assert unit.name in proc.stdout, f"--check never mentions {unit.name}"
+
+
+def test_images_are_started_on_demand():
+    start_units = re.search(r"START_UNITS=\(([^)]*)\)", SETUP).group(1).split()
+    assert "llama-server" in start_units
+    assert not any(unit.startswith("sd-server") for unit in start_units)
+    assert "systemctl disable --now sd-server.service sd-server-sd15.service" in SETUP
