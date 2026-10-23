@@ -4,6 +4,10 @@ Everything in this file was measured on the machine in
 [HARDWARE.md](HARDWARE.md). Nothing is estimated. If you are trying this stack
 for the first time, read this before you conclude something is broken.
 
+The timing tables below are historical October 6–8 measurements. The
+[October 22 release comparison](RELEASE-COMPARISON.md) records the current
+controlled A/B and the change to image backends loaded only on demand.
+
 ## The four states
 
 The same stack, four different experiences. Which one you get depends on what
@@ -42,8 +46,8 @@ Measured with an identical request in both states:
 
 The gap is *entirely* the swap: the router restarts llama-server with different
 weights. Generation speed is identical in both states — 99.2 vs 99.1 tok/s,
-34.3 vs 34.3 tok/s. **A cold model is never slower to generate; it is slow to
-arrive.**
+34.3 vs 34.3 tok/s. In this short-prompt test, decode speed was effectively unchanged; the cold
+request paid the model-loading cost. Long contexts can also slow generation.
 
 So: one model per session, one model per workflow. Every hop you make is
 another 7.9–38.5 s of waiting for weights to load.

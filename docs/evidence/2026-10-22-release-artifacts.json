@@ -1,0 +1,55 @@
+{
+  "images": [
+    {
+      "filename": "img-sd15-172152.png",
+      "sha256": "7a9856b71a3f9c72a3ccb671feec35fdea9d2b82f1ea8b8bd9facf003d24e855",
+      "dimensions": [
+        512,
+        512
+      ],
+      "nonconstant_pixels": true
+    },
+    {
+      "filename": "img-sd35-172637.png",
+      "sha256": "ea5eaec6d34b9097a24f536ae71279e09a7c495500cd95038333920b2e48f28d",
+      "dimensions": [
+        512,
+        512
+      ],
+      "nonconstant_pixels": true
+    },
+    {
+      "filename": "img-sd15-174936.png",
+      "sha256": "7a9856b71a3f9c72a3ccb671feec35fdea9d2b82f1ea8b8bd9facf003d24e855",
+      "dimensions": [
+        512,
+        512
+      ],
+      "nonconstant_pixels": true
+    },
+    {
+      "filename": "img-sd35-175054.png",
+      "sha256": "ea5eaec6d34b9097a24f536ae71279e09a7c495500cd95038333920b2e48f28d",
+      "dimensions": [
+        512,
+        512
+      ],
+      "nonconstant_pixels": true
+    }
+  ],
+  "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 34\n",
+  "service_states": [
+    "active",
+    "active",
+    "inactive",
+    "inactive",
+    "active"
+  ],
+  "model_files_unchanged": true,
+  "final_text_server": {
+    "context": 65536,
+    "slots": 1,
+    "model_path": "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf"
+  },
+  "hermes_gateway": "active"
+}

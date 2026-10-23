@@ -62,6 +62,7 @@ along the way are in [`docs/`](docs/):
 - [EXPECTATIONS.md](docs/EXPECTATIONS.md) — **start here**: what to expect and how to use it correctly
 - [HARDWARE.md](docs/HARDWARE.md) — what runs on this card and what cannot
 - [BENCHMARKS.md](docs/BENCHMARKS.md) — tokens/second, cold vs warm, agent latency — measured
+- [RELEASE-COMPARISON.md](docs/RELEASE-COMPARISON.md) — controlled release comparison and image→text validation
 - [MODELS.md](docs/MODELS.md) — which model for which job
 - [SETUP.md](docs/SETUP.md) — install from scratch
 - [PORTABLE.md](docs/PORTABLE.md) — the second machine: llama.cpp in normal RAM on a GPU-less laptop

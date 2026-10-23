@@ -65,6 +65,7 @@ se rompió en el camino están en [`docs/`](docs/):
 - [EXPECTATIONS.md](docs/EXPECTATIONS.md) — **empieza por aquí**: qué esperar y cómo usarlo bien
 - [HARDWARE.md](docs/HARDWARE.md) — qué corre en esta tarjeta y qué no
 - [BENCHMARKS.md](docs/BENCHMARKS.md) — tokens/segundo, cold vs warm, latencia de agente — medido
+- [RELEASE-COMPARISON.md](docs/RELEASE-COMPARISON.md) — comparativa controlada y validación imagen→texto
 - [MODELS.md](docs/MODELS.md) — qué modelo para cada tarea
 - [SETUP.md](docs/SETUP.md) — instalación desde cero
 - [PORTABLE.md](docs/PORTABLE.md) — la segunda máquina: llama.cpp en RAM normal, en una laptop sin GPU

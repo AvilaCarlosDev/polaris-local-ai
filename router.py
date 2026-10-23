@@ -100,7 +100,7 @@ CATEGORY_OF = {
 AUDIO_ID = "whisper-medium"
 AUDIO_INFO = {"port": 8081, "path": "/inference"}
 
-# Flags por modelo. El template por defecto fija "-ngl 99 --threads 4", que con
+# Flags por modelo. Forzar "-ngl 99 --threads 4" con
 # el MoE de 18.6 GB llena la VRAM al 99.4% y hace thrashing (medido: 8.12 tok/s
 # con -ngl 99 contra 22.26 con auto-fit). Sin -ngl, llama.cpp calcula sola cuantas
 # capas caben y deja ~1 GiB de headroom para el KV cache.
@@ -206,6 +206,12 @@ def sd_ensure(want):
     return False
 
 
+def stop_image_backends():
+    """Release image weights before loading or resuming a text model."""
+    subprocess.run(["systemctl", "stop", *[cfg["unit"] for cfg in IMG_MODELS.values()]],
+                   capture_output=True, check=True)
+
+
 def generate_image(prompt, steps=20, width=512, height=512, name=None,
                    model=None):
     """Libera VRAM, genera con SD, y deja que el router recargue el LLM solo
@@ -246,6 +252,7 @@ def generate_image(prompt, steps=20, width=512, height=512, name=None,
             f.write(raw)
         return path, time.time() - t0, len(raw)
     finally:
+        stop_image_backends()
         if was_up:
             subprocess.run(["systemctl", "start", "llama-server"],
                            capture_output=True, check=False)
@@ -412,7 +419,7 @@ def server_flags(model):
     # releidos. El router ya serializa los chats con _load_lock, asi que los
     # slots extra nunca daban paralelismo real.
     return extra + (MODEL_ARGS.get(model) or (
-        f"--host 0.0.0.0 --port 8080 -ngl 99 -c {CTX} -ub 512 --parallel 1 "
+        f"--host 0.0.0.0 --port 8080 -c {CTX} -ub 512 --parallel 1 "
         "--cache-type-k q8_0 --cache-type-v q8_0 --threads 4 "
         "--cache-reuse 4096 "
     ))
@@ -463,6 +470,7 @@ def ensure(model):
     # vez: uno para llama-server mientras el otro lo reinicia, y ambos clients
     # se quedan colgados sin respuesta (BrokenPipe / IncompleteRead).
     with _load_lock:
+        stop_image_backends()
         if current() == model and healthy():
             if _restore_pending.is_set():
                 # generate_image reinicio llama-server fuera de load(): aca
@@ -853,21 +861,18 @@ def main():
                     if want != current() or not healthy():
                         sys.stderr.write(f"[router] cargando {want} (estaba {current() or 'nada'})\n")
                         sys.stderr.flush()
-                        try:
-                            ready = ensure(want)
-                        except Exception as e:
-                            # Sin esto la excepcion sube al handler,
-                            # socketserver cierra el socket sin responder y el
-                            # cliente espera hasta su timeout.
-                            sys.stderr.write(f"[router] fallo ensure({want}): {e}\n")
-                            sys.stderr.flush()
-                            ready = False
-                        if not ready:
-                            self.send_response(503)
-                            self.send_header("Content-Length", "48")
-                            self.end_headers()
-                            self.wfile.write(b'{"error":{"message":"no se pudo cargar"}}'[:48])
-                            return
+                    try:
+                        ready = ensure(want)
+                    except Exception as e:
+                        # Sin esto la excepcion sube al handler,
+                        # socketserver cierra el socket sin responder y el
+                        # cliente espera hasta su timeout.
+                        sys.stderr.write(f"[router] fallo ensure({want}): {e}\n")
+                        sys.stderr.flush()
+                        ready = False
+                    if not ready:
+                        self._json(503, {"error": {"message": "no se pudo cargar"}})
+                        return
                     # En vivo y cancelable: libera el lock apenas el cliente
                     # se va, en vez de esperar a que llama termine para nadie.
                     forward_live(self, self.path, body, dict(self.headers))

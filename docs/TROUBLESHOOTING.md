@@ -99,8 +99,10 @@ model.
 **port 8082**. They are mutually exclusive by design — they would also fight
 over the 6 GB VRAM budget.
 
-The router switches them per request, which costs 5–17 s. If you keep getting
-swaps, stay on one model: `ia-imagen -m sd15 …` or `ia-imagen …`.
+The router starts the requested image backend on demand and stops image weights
+before resuming text. Repeated images therefore reload the selected backend;
+this deliberately reserves GPU memory for a single workload. See the
+[release comparison](RELEASE-COMPARISON.md) for measured transition costs.
 
 Never `systemctl start` both. One will fail to bind.
 

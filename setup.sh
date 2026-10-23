@@ -255,7 +255,7 @@ done
 # ── 8. Start ───────────────────────────────────────────────────────────────
 if [[ $CHECK_ONLY -eq 0 && $DO_START -eq 1 ]]; then
   hdr "Starting"
-  START_UNITS=(llama-server router sd-server-sd15)
+  START_UNITS=(llama-server router)
   if [[ -f "$WHISPER_MODEL" ]]; then START_UNITS+=(whisper-server); fi
   for s in "${START_UNITS[@]}"; do
     systemctl enable --now "$s.service" >/dev/null 2>&1 || true
@@ -263,9 +263,8 @@ if [[ $CHECK_ONLY -eq 0 && $DO_START -eq 1 ]]; then
       warn "$s did not start — see docs/TROUBLESHOOTING.md"
     fi
   done
-  # sd-server (SD 3.5) shares port 8082 with sd-server-sd15; the router starts
-  # whichever one the request needs. Leave both enabled, not both running.
-  systemctl enable sd-server.service >/dev/null 2>&1 || true
+  # Image weights are loaded by the router only when requested.
+  systemctl disable --now sd-server.service sd-server-sd15.service >/dev/null 2>&1 || true
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────────
