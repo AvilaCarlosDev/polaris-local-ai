@@ -27,3 +27,6 @@ build/
 *.gguf
 *.safetensors
 *.bin
+
+# opencode skill registry cache
+.atl/
