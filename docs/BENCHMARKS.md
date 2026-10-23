@@ -8,7 +8,10 @@ Nothing here is quoted from a vendor or another project.
 
 The original tables below describe the October 6–8 runs. See the
 [October 22 controlled release comparison](RELEASE-COMPARISON.md) for the
-same-day router A/B, memory samples and image→text regression checks.
+same-day router A/B, memory samples and image→text regression checks, and the
+[October 23 post-maintenance comparison](RELEASE-COMPARISON.md#post-maintenance-comparison--2026-10-23)
+for the same six models re-measured after the OS/kernel updates (no regression,
+all historical numbers reproduced within ~1 %).
 
 > **Just trying it out?** Read [EXPECTATIONS.md](EXPECTATIONS.md) first — it
 > turns these tables into plain expectations for your first hour of use.

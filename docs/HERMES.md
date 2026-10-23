@@ -90,6 +90,50 @@ A correct answer means the agent selected your model, reached the endpoint,
 invoked the MCP tool and composed a reply — the full loop, with no cloud
 involved.
 
+## Keep a stalled request from hanging
+
+Two settings in `~/.hermes/config.yaml` bound what a slow or wedged server can
+do to the agent. They live next to the provider definition:
+
+```yaml
+providers:
+  venator:
+    api: http://100.97.88.59:8090/v1   # your router, via Tailscale
+    api_key: ${IA_API_KEY}
+    transport: openai_chat
+    request_timeout_seconds: 900       # hard ceiling for the whole request
+    stale_timeout_seconds: 300         # give up on a stream that stopped emitting
+
+fallback_providers: []                 # no cloud failover
+```
+
+Why these values, on this stack:
+
+- **The ceiling must cover a full prefill.** The first message of a session
+  arrives with ~20 K tokens; at ~130 tok/s that is ~150 s before the first
+  token appears. 900 s absorbs a cold prefill plus a long reasoning reply and
+  still stops a genuinely stuck connection.
+- **`stale_timeout_seconds` is the anti-hang.** The stream is what keeps a
+  turn alive; if it stops emitting, 300 s is enough for any real gap between
+  tokens and short enough that you are not left staring at a frozen prompt.
+- **Keep cloud failover off.** With `fallback_providers: []` a local failure
+  surfaces as an error you can see. A paid-out cloud key turns the same
+  failure into a request that leaves the machine, stalls on the provider's
+  side and looks like a hang — the failure mode this stack is meant to avoid.
+
+Measured behaviour with these values (same day, one slot):
+
+| Turn | Input tokens | Cache read | Wall |
+|---|---:|---:|---:|
+| First message of a session | 19,927 | 0 | 138.65 s |
+| Next message, same session | 4 | 19,923 | 16.86 s |
+
+The slot is shared with any other local client (OpenCode); if another client
+prefills in between, your next turn pays the cold column again. That is
+occupancy, not a hang — the timeouts above never trigger for it, because the
+server keeps streaming. Diagnosis and the raw server-side line are in
+[LOCAL-STABILITY.md](LOCAL-STABILITY.md#slot-contention-2026-10-23).
+
 ## Switching engines mid-conversation
 
 Because the router serves every model behind one URL, changing the agent's

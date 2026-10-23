@@ -57,6 +57,60 @@ Start a new client session after this repair. Existing transcripts above the new
 window were preserved and were not silently truncated or rewritten. Server-side
 cache is temporary; conversation files and durable agent memory remain separate.
 
+## Slot contention — 2026-10-23
+
+The stack was reported as "slower than before" while no longer stalling. The
+server was healthy; one client was occupying the only slot.
+
+Evidence from `journalctl -u llama-server` on CT 103, one request:
+
+```
+prompt eval time = 403184 ms / 52378 tokens  (129.92 tok/s)   ← 403 s prefill
+        eval time =  19651 ms /    32 tokens  ( 16.28 tok/s)
+      total time = 444660 ms / 52410 tokens  ( 16.70 tok/s)
+```
+
+With `--parallel 1` there is a single slot. A long-lived OpenCode session was
+holding a ~52 K-token context, so **every** turn of every other client waited
+behind a 400-second prefill, and each of those turns re-prefilled the whole
+context again. The fix was closing that client — not touching the server:
+
+| Check | Before | After closing the client |
+|---|---:|---:|
+| Short chat request, wall time | behind a 52 K prefill | **2.17 s** (300-token-class reply, 27.9 tok/s decode) |
+| Clients connected to `:8090` | 1 long-lived session | none |
+
+Hermes, measured the same day with `hermes -z … --usage-file`, shows the same
+two states from the agent's side:
+
+| Hermes turn | Input tokens | Cache read | Wall |
+|---|---:|---:|---:|
+| Cold (no matching prefix in cache) | 19,927 | 0 | **138.65 s** |
+| Warm (immediately after, same prefix) | 4 | **19,923** | **16.86 s** |
+
+Prefill of ~20 K tokens at ~150 tok/s is the cold cost; the warm turn is CLI
+boot plus decode. This matches the 20,109-token agent measurement in
+[BENCHMARKS.md](BENCHMARKS.md#latency-through-an-agent--what-you-actually-feel).
+
+Operational rules that follow from the measurement:
+
+- **One heavy client at a time.** Opencode and Hermes share the slot; whoever
+  talks second pays a full prefill, because their prefix is not the cached one.
+- A slow turn with `prompt_n` in the tens of thousands is occupancy, not
+  hardware: read the `print_timing` line before changing anything.
+- The Hermes client got request ceilings so a stalled stream fails instead of
+  hanging (`providers.<id>.request_timeout_seconds: 900`,
+  `stale_timeout_seconds: 300`) and no cloud failover
+  (`fallback_providers: []`) — see [HERMES.md](HERMES.md).
+
+Throughput itself was re-measured after the OS/kernel maintenance of both hosts
+(kernel `7.0.14-25-pve`) and is unchanged or marginally better on all six
+models — see the [post-maintenance comparison](RELEASE-COMPARISON.md#post-maintenance-comparison--2026-10-23).
+Nothing in this incident was caused by the GPU link: the card sits on a PCIe
+root port directly off the root complex (`0000:10:00.0` under `0000:00:01.1`),
+and decode at 16.7–28.5 tok/s is consistent with that, not with a USB-attached
+device.
+
 
 ## Publication regression checks
 
