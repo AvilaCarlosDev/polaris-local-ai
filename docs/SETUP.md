@@ -107,10 +107,14 @@ want them.
 ## 6. Start
 
 ```bash
-sudo systemctl enable --now llama-server router sd-server-sd15
-sudo systemctl enable sd-server        # enabled, but NOT running alongside sd15
+sudo systemctl enable --now llama-server router
 sudo systemctl enable --now whisper-server   # only if you installed the audio weight
+sudo systemctl disable --now sd-server sd-server-sd15   # the router starts them on demand
 ```
+
+Leave both image units disabled. The router starts the one a request needs and
+stops it again before text resumes, so image weights never sit in VRAM next to a
+text model.
 
 Verify:
 

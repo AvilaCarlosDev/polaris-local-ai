@@ -67,8 +67,10 @@ somewhere is your 32 GB of system RAM.
 | `imagen` (a.k.a. `sd35`) | SD 3.5 Medium | default; better prompt adherence, slower |
 | `sd15` | SD 1.5 | faster, benefits from a negative prompt |
 
-They **share port 8082** and cannot run at once. The router switches between
-them automatically; the switch costs ~5–17 s.
+They **share port 8082** and cannot run at once. The router starts the requested
+backend on demand and unloads it before text resumes, so every image request pays
+the backend load (SD 1.5 ≈ 34 s, SD 3.5 ≈ 72 s per 512×512 image including load,
+measured in [RELEASE-COMPARISON.md](RELEASE-COMPARISON.md)).
 
 Generate from the CLI:
 

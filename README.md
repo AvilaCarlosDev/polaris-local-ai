@@ -50,7 +50,7 @@ and two image models, all reachable through a single OpenAI-compatible endpoint.
 |---|---|
 | **Text** | 6 models, from a 1.5 B coder up to a 30 B MoE, swapped on demand |
 | **Vision** | Qwen2.5-VL 3 B with its mmproj projector |
-| **Images** | SD 3.5 Medium and SD 1.5 through stable-diffusion.cpp |
+| **Images** | SD 3.5 Medium and SD 1.5 through stable-diffusion.cpp, loaded on demand and released before text resumes |
 | **API** | One OpenAI-compatible endpoint, one API key, 6 text/vision ids + image generation |
 | **Selector** | `ia-models` lists every id the router serves, grouped by category |
 | **Agent** | Works as the backend engine for Hermes Agent, with MCP tools |
@@ -67,11 +67,13 @@ along the way are in [`docs/`](docs/):
 - [SETUP.md](docs/SETUP.md) — install from scratch
 - [PORTABLE.md](docs/PORTABLE.md) — the second machine: llama.cpp in normal RAM on a GPU-less laptop
 - [HERMES.md](docs/HERMES.md) — using it as an agent engine
+- [LOCAL-STABILITY.md](docs/LOCAL-STABILITY.md) — context, slot and client limits that keep agents stable
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — the bugs we hit
 
 ## What it actually feels like
 
-Measured on this machine, not estimated. Same prompt, same model, two states:
+Measured on this machine, not estimated (October 6–8 runs; the image row is from the
+October 22 release comparison). Same prompt, same model, two states:
 
 | Situation | Wall time |
 |---|---:|
@@ -79,17 +81,23 @@ Measured on this machine, not estimated. Same prompt, same model, two states:
 | **Cold** API call, right after a model swap | **11.0 – 55.0 s** |
 | First message to an agent, new session | **~161 s** |
 | Every later message in that same session | **~21 – 25 s** |
+| Chat right after an image generation, 23K-token conversation | **1.8 – 2.1 s** |
 
 **Row 1 vs row 2 is the swap** — 7.9–38.5 s to restart llama-server with new
-weights. Generation speed is identical in both states (21–99 tok/s); a cold
-model is not slower, it is slow to *arrive*. Keep one model loaded for the
-whole session and you live in row 1.
+weights. With short prompts, generation speed was the same in both states
+(21–99 tok/s): the cold request paid the loading cost, not slower decoding. Keep
+one model loaded for the whole session and you live in row 1.
 
 **Row 2 vs row 3 is the agent, not the GPU.** Hermes sends a **~20,100-token
 prompt** (55 KB of identity plus 27 tool schemas), so the model spends ~124 s
 reading your sentence before answering it in ~2.5 s. Prompt caching collapses
 that to 25–71 tokens on turns 2+, and ~11.7 s of every turn is the agent CLI
 restarting per invocation.
+
+**The last row is the KV cache surviving an image.** Since v0.4.0 the router
+restores the conversation before answering, instead of re-reading 23K tokens
+(~208 s before the fix). See
+[RELEASE-COMPARISON.md](docs/RELEASE-COMPARISON.md).
 
 Full breakdown:
 [BENCHMARKS.md](docs/BENCHMARKS.md) ·
@@ -102,7 +110,8 @@ Full breakdown:
 ```
 
 The script checks your GPU, Vulkan driver, RAM and disk, builds what is
-missing, installs the systemd units and starts the router. It refuses to
+missing, installs the systemd units and starts the router. Image services stay
+off at boot; the router starts them when an image is requested. It refuses to
 proceed if your hardware cannot run the stack — see
 [HARDWARE.md](docs/HARDWARE.md) for the exact requirements.
 
@@ -148,6 +157,7 @@ image-mcp.py           Image generation bridge
 clients/ia-imagen      CLI to generate an image and save it locally
 clients/ia-models      CLI listing every model, grouped by category
 scripts/hero-demo.sh   The script behind the video above — run it yourself
+scripts/bench-*.py     Reproducible benchmarks behind the numbers in docs/
 systemd/               The units that run the stack
 docs/                  Hardware notes, benchmarks, setup, gotchas
 setup.sh               One-shot installer

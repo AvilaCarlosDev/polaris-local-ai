@@ -53,7 +53,7 @@ un único endpoint compatible con OpenAI.
 |---|---|
 | **Texto** | 6 modelos, desde un coder de 1.5 B hasta un MoE de 30 B, intercambiados bajo demanda |
 | **Visión** | Qwen2.5-VL 3 B con su proyector mmproj |
-| **Imágenes** | SD 3.5 Medium y SD 1.5 a través de stable-diffusion.cpp |
+| **Imágenes** | SD 3.5 Medium y SD 1.5 a través de stable-diffusion.cpp, cargados bajo demanda y liberados antes de volver al texto |
 | **API** | Un endpoint compatible con OpenAI, una API key, 6 ids de texto/visión + generación de imágenes |
 | **Selector** | `ia-models` lista todos los ids que sirve el router, agrupados por categoría |
 | **Agente** | Funciona como motor backend de Hermes Agent, con tools MCP |
@@ -70,11 +70,13 @@ se rompió en el camino están en [`docs/`](docs/):
 - [SETUP.md](docs/SETUP.md) — instalación desde cero
 - [PORTABLE.md](docs/PORTABLE.md) — la segunda máquina: llama.cpp en RAM normal, en una laptop sin GPU
 - [HERMES.md](docs/HERMES.md) — usarlo como motor de agentes
+- [LOCAL-STABILITY.md](docs/LOCAL-STABILITY.md) — límites de contexto, slots y clientes que mantienen estables a los agentes
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — los bugs que encontramos
 
 ## Cómo se siente en la práctica
 
-Medido en esta máquina, no estimado. Mismo prompt, mismo modelo, dos estados:
+Medido en esta máquina, no estimado (corridas del 6 al 8 de octubre; la fila de imagen es de la
+comparativa del 22 de octubre). Mismo prompt, mismo modelo, dos estados:
 
 | Situación | Tiempo total |
 |---|---:|
@@ -82,17 +84,23 @@ Medido en esta máquina, no estimado. Mismo prompt, mismo modelo, dos estados:
 | Llamada **cold**, recién después de un swap | **11,0 – 55,0 s** |
 | Primer mensaje a un agente, sesión nueva | **~161 s** |
 | Cada mensaje posterior en esa misma sesión | **~21 – 25 s** |
+| Chat justo después de generar una imagen, conversación de 23K tokens | **1,8 – 2,1 s** |
 
 **La fila 1 vs la fila 2 es el swap** — 7,9–38,5 s para reiniciar llama-server
-con los pesos nuevos. La velocidad de generación es idéntica en ambos estados
-(21–99 tok/s); un modelo frío no es más lento, tarda más en *llegar*. Mantén un solo modelo
-cargado durante toda la sesión y vives en la fila 1.
+con los pesos nuevos. Con prompts cortos, la velocidad de generación fue la misma
+en ambos estados (21–99 tok/s): la llamada fría pagó la carga, no una generación más
+lenta. Mantén un solo modelo cargado durante toda la sesión y vives en la fila 1.
 
 **La fila 2 vs la fila 3 es el agente, no la GPU.** Hermes envía un prompt de
 **~20.100 tokens** (55 KB de identidad más 27 esquemas de tools), así que el
 modelo se tarda ~124 s en leer tu frase antes de responderla en ~2,5 s. El
 caché de prompts reduce eso a 25–71 tokens a partir del segundo turno, y ~11,7 s
 de cada turno son el CLI del agente reiniciándose en cada invocación.
+
+**La última fila es la caché KV sobreviviendo a una imagen.** Desde v0.4.0 el router
+restaura la conversación antes de responder, en vez de releer 23K tokens
+(~208 s antes del arreglo). Ver
+[RELEASE-COMPARISON.md](docs/RELEASE-COMPARISON.md).
 
 Desglose completo:
 [BENCHMARKS.md](docs/BENCHMARKS.md) ·
@@ -105,7 +113,8 @@ Desglose completo:
 ```
 
 El script verifica tu GPU, el driver Vulkan, la RAM y el disco, construye lo
-que falte, instala las units de systemd y arranca el router. Se niega a
+que falte, instala las units de systemd y arranca el router. Los servicios de
+imagen quedan apagados al arrancar; el router los inicia cuando se pide una imagen. Se niega a
 continuar si tu hardware no puede correr el stack — ver
 [HARDWARE.md](docs/HARDWARE.md) para los requisitos exactos.
 
@@ -135,7 +144,7 @@ ia-models --json        # lista cruda para scripts
 | `texto` | coder de 1.5 B → 7 B, más ornith 9 B | chat, resúmenes, código |
 | `vision` | Qwen2.5-VL 3 B | la tarea involucra una imagen |
 | `multitarea` | Qwen3-30B-A3B (3 B activos) | razonamiento largo y trabajo de agente |
-| `imagen` | SD 3.5 Medium, SD 1.5 | querés una imagen |
+| `imagen` | SD 3.5 Medium, SD 1.5 | quieres una imagen |
 | `audio` | whisper medium | transcripción — servicio aparte, listado solo si está instalado |
 
 Las categorías salen del endpoint mismo (`GET /v1/models`), así que la lista
@@ -150,7 +159,8 @@ router.py              Router compatible con OpenAI: intercambia modelos bajo de
 image-mcp.py           Puente de generación de imágenes
 clients/ia-imagen      CLI para generar una imagen y guardarla localmente
 clients/ia-models      CLI que lista todos los modelos, agrupados por categoría
-scripts/hero-demo.sh   El script detrás del video de arriba — corrélo vos mismo
+scripts/hero-demo.sh   El script detrás del video de arriba — córrelo tú mismo
+scripts/bench-*.py     Benchmarks reproducibles detrás de los números de docs/
 systemd/               Las units que corren el stack
 docs/                  Notas de hardware, benchmarks, instalación, gotchas
 setup.sh               Instalador de una sola ejecución
