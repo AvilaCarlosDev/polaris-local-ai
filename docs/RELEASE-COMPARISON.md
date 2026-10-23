@@ -173,3 +173,50 @@ Rollback boundaries follow the slices: the report can be removed without changin
 the evidence or runtime; the benchmark driver and dated raw files can be removed
 without changing runtime behavior. Runtime rollback is documented in
 [LOCAL-STABILITY.md](LOCAL-STABILITY.md).
+
+## Post-maintenance comparison — 2026-10-23
+
+The same driver, prompt and machine one day later, after operating-system
+maintenance on both hosts — venator kernel `7.0.14-22-pve` → `7.0.14-25-pve`
+plus CT 103 packages, r2d2 host and its two containers — and a full venator
+reboot. `reps 2`, one slot, 64 K context, llama.cpp and `router.py`
+untouched (`router_sha256 d97d7c97…`, identical to the October 22 run).
+Raw rows:
+[`evidence/2026-10-23-postmant-text.jsonl`](evidence/2026-10-23-postmant-text.jsonl)
+(label `postmant-20261023`).
+
+Decode tok/s, median of n=2. "After" is the October 22 column above; the two
+October 23 columns are cold and warm of this run.
+
+| Model | 10-22 After | 10-23 cold | 10-23 warm | Warm vs 10-22 |
+|---|---:|---:|---:|---:|
+| Qwen Coder 1.5B | 98.60 | 99.04 [98.85–99.23] | 99.20 [99.16–99.24] | +0.6 % |
+| Qwen VL 3B | 65.61 | 66.16 [65.93–66.39] | 66.32 [66.32–66.33] | +1.1 % |
+| Qwen 7B | 34.09 | 34.56 [34.52–34.61] | 34.50 [34.48–34.52] | +1.2 % |
+| Qwen Coder 7B | 33.99 | 34.53 [34.51–34.55] | 34.48 [34.45–34.50] | +1.4 % |
+| Ornith 9B | 27.80 | 28.49 [28.48–28.51] | 28.48 [28.47–28.49] | +2.4 % |
+| Qwen3 MoE 30B | 21.09 | 20.91 [20.79–21.03] | 21.17 [21.14–21.20] | +0.4 % |
+
+Wall time in seconds (median, n=2), cold → warm:
+
+| Model | Cold | Warm |
+|---|---:|---:|
+| Qwen Coder 1.5B | 9.52 | 3.05 |
+| Qwen VL 3B | 14.95 | 4.56 |
+| Qwen 7B | 24.66 | 8.72 |
+| Qwen Coder 7B | 25.65 | 8.73 |
+| Ornith 9B | 21.31 | 10.70 |
+| Qwen3 MoE 30B | 53.56 | 14.21 |
+
+What this run establishes:
+
+- **The OS and kernel maintenance moved nothing.** Every decode median is equal
+  to or marginally above October 22, and no wall time regressed. With n=2 the
+  +0.6 % … +2.4 % spread is inside run-to-run noise, so this is recorded as
+  *no regression*, not as a speedup.
+- The run also re-confirms the October 6–8 historical table: 99.2 / 66.4 /
+  34.2 / 34.3 / 28.0 / 21.3 tok/s are all reproduced within ~1 %.
+- The slot-contention incident measured the same day (a second client holding a
+  ~52 K-token context re-prefilling for 403 s per turn) is a client-side
+  occupancy problem, not a throughput change — see
+  [LOCAL-STABILITY.md](LOCAL-STABILITY.md#slot-contention--2026-10-23).

@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `docs/RELEASE-COMPARISON.md` gained the **post-maintenance comparison
+  (2026-10-23)** with raw rows in `docs/evidence/2026-10-23-postmant-text.jsonl`:
+  all six models re-measured with `scripts/bench-release.py` after the venator
+  and r2d2 OS updates (kernel `7.0.14-25-pve`) and a full reboot. No decode or
+  wall-time regression; the October 6–8 historical numbers reproduce within ~1 %.
+
+- `docs/LOCAL-STABILITY.md` gained **Slot contention — 2026-10-23**: the
+  diagnosis of the reported slowness (one ~52 K-token client re-prefilling
+  403 s per turn on the single slot), the before/after checks, the measured
+  Hermes cold/warm turns (138.65 s / 16.86 s) and the client-occupancy rules.
+
+- `docs/HERMES.md` gained **Keep a stalled request from hanging**:
+  `request_timeout_seconds` / `stale_timeout_seconds` on the local provider and
+  keeping `fallback_providers: []`, with the reasoning for each value.
+
 ## [0.4.0] - 2026-10-22
 
 ### Changed
