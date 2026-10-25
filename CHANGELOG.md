@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Qwen3.6-35B-A3B** (`qwen3.6-35b-a3b-ud-iq4_xs`, unsloth `UD-IQ4_XS`) in
+  `router.py`: `-ngl 99 --n-cpu-moe 30 -ub 2048 --reasoning-budget 0`. Fastest
+  model measured for agent use (244 s on the real OpenCode task, 23/23 tests).
+  See `docs/BENCHMARKS.md` → *MoE offload tuning … 2026-10-25*.
+
 - `docs/RELEASE-COMPARISON.md` gained the **post-maintenance comparison
   (2026-10-23)** with raw rows in `docs/evidence/2026-10-23-postmant-text.jsonl`:
   all six models re-measured with `scripts/bench-release.py` after the venator
@@ -22,6 +27,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `docs/HERMES.md` gained **Keep a stalled request from hanging**:
   `request_timeout_seconds` / `stale_timeout_seconds` on the local provider and
   keeping `fallback_providers: []`, with the reasoning for each value.
+
+### Changed
+
+- `router.py`: Qwen3-30B-A3B now keeps attention on the GPU and only 40 of 48
+  layers' experts on the CPU (`-ngl 99 --n-cpu-moe 40 -ub 2048`). Prefill on
+  long prompts 94 → 152 tok/s, decode 10 → 17 tok/s, VRAM 7.6 GB at `-c 65536`.
 
 ## [0.4.0] - 2026-10-22
 

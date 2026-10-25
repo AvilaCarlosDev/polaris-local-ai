@@ -1,0 +1,23 @@
+== nuevo (gentleman + qwen3-30b-a3b-instruct-2507-q4_k_m) inicio 14:52:42
+== nuevo fin 15:06:07 | 805s | rc=0
+__pycache__
+semver.py
+test_semver.py
+FAILED test_semver.py::test_negative_values - Failed: DID NOT RAISE ValueError
+1 failed, 4 passed in 0.02s
+[0m
+Los tests no pasaron. Fallo `test_negative_values` porque no se está lanzando ValueError al pasar versiones con valores negativos.
+== anterior (gentle-orchestrator + ornith-1.5-9b-q4_k_m) inicio 15:06:07
+== anterior fin 15:21:07 | 900s | rc=124
+__pycache__
+semver.py
+test_semver.py
+ERROR test_semver.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.15s
+[0m
+== RESUMEN
+nuevo 805 0
+anterior 900 124
+
+[exited with code 0]

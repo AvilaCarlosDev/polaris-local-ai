@@ -76,6 +76,7 @@ MODELS = {
     "qwen2.5-vl-3b-instruct-q4_k_m":     f"{M}/qwen2.5-vl-3b-instruct-q4_k_m.gguf",
     "ornith-1.5-9b-q4_k_m":                "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf",
     "qwen3-30b-a3b-instruct-2507-q4_k_m": "/var/cache/ai/models/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
+    "qwen3.6-35b-a3b-ud-iq4_xs": "/var/cache/ai/models/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf",
 }
 ALIASES = {"fast": "qwen2.5-coder-1.5b-instruct-q4_k_m",
            "code": "qwen2.5-coder-7b-instruct-q4_k_m",
@@ -93,6 +94,7 @@ CATEGORY_OF = {
     "ornith-1.5-9b-q4_k_m": "texto",
     "qwen2.5-vl-3b-instruct-q4_k_m": "vision",
     "qwen3-30b-a3b-instruct-2507-q4_k_m": "multitarea",
+    "qwen3.6-35b-a3b-ud-iq4_xs": "multitarea",
 }
 # Audio no pasa por el router: whisper-server vive en su propio puerto y expone
 # /inference (no la ruta OpenAI /v1/audio/transcriptions, que da 404 en esta
@@ -105,8 +107,19 @@ AUDIO_INFO = {"port": 8081, "path": "/inference"}
 # con -ngl 99 contra 22.26 con auto-fit). Sin -ngl, llama.cpp calcula sola cuantas
 # capas caben y deja ~1 GiB de headroom para el KV cache.
 MODEL_ARGS = {
+    "qwen3.6-35b-a3b-ud-iq4_xs": (
+        # 2026-10-25: Qwen3.6-35B-A3B (qwen35moe, atencion mayormente lineal, KV chico).
+        # Medido con -c 65536: --n-cpu-moe 32 = 6.3 GB VRAM y lectura 254 tok/s;
+        # --n-cpu-moe 26 o menos desborda. Razonamiento apagado para respuestas directas.
+        "--host 0.0.0.0 --port 8080 -ngl 99 --n-cpu-moe 30 -ub 2048 "
+        "-c 65536 --parallel 1 --threads 6 --reasoning-budget 0 "
+        "--cache-type-k q8_0 --cache-type-v q8_0 --cache-reuse 4096 "
+    ),
     "qwen3-30b-a3b-instruct-2507-q4_k_m": (
-        "--host 0.0.0.0 --port 8080 -ub 512 "
+        # 2026-10-25: expertos MoE en CPU salvo 8 capas (-ngl 99 --n-cpu-moe 40) y
+        # -ub 2048. Medido con -c 65536: 7.6 GB VRAM, lectura 152 tok/s y escritura
+        # 17 tok/s (antes ~94 y ~10). Con --n-cpu-moe 37 o menos la VRAM se desborda.
+        "--host 0.0.0.0 --port 8080 -ngl 99 --n-cpu-moe 40 -ub 2048 "
         "-c 65536 --parallel 1 --threads 6 "
         "--cache-type-k q8_0 --cache-type-v q8_0 --cache-reuse 4096 "
     ),

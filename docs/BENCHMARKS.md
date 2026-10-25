@@ -310,6 +310,88 @@ sudo python3 scripts/bench-slots.py --corpus docs/*.md router.py setup.sh \
   --chars 64500 --reps 3
 ```
 
+## MoE offload tuning, OpenCode prompt size and Qwen3.6 — 2026-10-25
+
+Raw rows: `docs/evidence/2026-10-25-*`. All runs held the client lock
+(`ia-local.sh`) so nothing else touched the single slot.
+
+### 1. Qwen3-30B-A3B: keep attention on the GPU, experts on the CPU
+
+The old flags let llama.cpp auto-fit whole layers (`-ub 512`, no `-ngl`), so
+attention for most layers ran on the CPU and long prompts collapsed
+(47 tok/s prefill at ~32 K tokens in a real OpenCode session).
+`llama-bench` (`-p 512,8192 -n 64`, q8_0 KV, 6 threads):
+
+| Config | pp512 | pp8192 | tg64 |
+|---|---:|---:|---:|
+| auto-fit, `-ub 512` (old) | 141.9 | 94.3 | 10.1 |
+| `-ngl 99 --n-cpu-moe 48 -ub 512` | 139.9 | 102.6 | 20.0 |
+| `-ngl 99 --n-cpu-moe 48 -ub 2048` | 139.8 | 146.9 | 19.8 |
+| `-ngl 99 --n-cpu-moe 40 -ub 2048` | 150.6 | 150.0 | 22.3 |
+| `-ngl 99 --n-cpu-moe 34 -ub 2048` | 159.2 | 152.2 | 23.8 |
+
+`llama-bench` allocates a tiny KV cache, so the winner was re-checked with the
+real server (`-c 65536`, ~9.9 K-token prompt):
+
+| `--n-cpu-moe` | VRAM | prefill | decode |
+|---:|---:|---:|---:|
+| 44 | 6292 MiB | 150.8 | 15.5 |
+| **40** | **7743 MiB** | **151.9** | **17.0** |
+| 37 | 8116 MiB (spills) | 100.6 | 16.3 |
+| 34 | 8122 MiB (spills) | 101.0 | 13.9 |
+
+`router.py` now uses `-ngl 99 --n-cpu-moe 40 -ub 2048` for this model. Through
+the router, the 5.6 K-token chat test went from 59.0 s to **39.3 s** and cold
+load from 39.5 s to 24.5 s.
+
+### 2. OpenCode's first request was ~32 K tokens
+
+Captured with a stub OpenAI server (`docs/evidence/2026-10-25-opencode-prompt-size.json`):
+
+| | chars | real tokens | skills | tools |
+|---|---:|---:|---:|---:|
+| Before | 153,320 | 32,463 | 78 | 35 |
+| After | 79,952 | 18,231 | 7 | 19 |
+
+What it was: OpenCode also loads every `~/.claude/skills` skill (78, mostly
+unrelated to coding, ~14 K tokens), the full Engram `agent` tool profile
+(19 tools, ~23 K chars) and context7. Fixes, all client-side:
+`OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`, a `permission.skill` allow-list,
+context7 disabled, and Engram started with only the 8 tools its protocol uses
+(`--tools=mem_current_project,mem_context,mem_search,mem_get_observation,mem_save,mem_session_summary,mem_update,mem_suggest_topic_key`).
+`gentle-orchestrator` (87 K-char prompt) was replaced as default agent by
+`gentleman`.
+
+### 3. Same real OpenCode task, three setups
+
+Task: write `semver.py` + pytest tests and run them (`opencode run --auto`,
+same prompt each time, 15 min cap).
+
+| Setup | Wall time | First-request prefill | Result |
+|---|---:|---:|---|
+| `gentle-orchestrator` + Ornith-1.5-9B | >900 s (timeout) | 50,882 tok @ 128 tok/s | test file had a syntax error |
+| `gentleman` + Qwen3-30B, old flags, full prompt | 805 s | 32,463 tok @ 47 tok/s | 4/5 pass (accepts negatives) |
+| `gentleman` + Qwen3-30B, tuned, slim prompt | 283 s | 18,231 tok @ 96 tok/s | 3/3 pass (negatives not tested) |
+| **`gentleman` + Qwen3.6-35B-A3B, slim prompt** | **244 s** | **18,639 tok @ 192 tok/s** | **23/23 pass, SemVer-correct regex** |
+
+### 4. Qwen3.6-35B-A3B (unsloth `UD-IQ4_XS`, 16.5 GiB)
+
+Hybrid linear-attention MoE (`qwen35moe`, the same family as Ornith-1.5-9B),
+so the KV cache is small and long prefill holds up. Reasoning disabled with
+`--reasoning-budget 0`. Real server, `-c 65536`, ~9 K-token prompt:
+
+| `--n-cpu-moe` | VRAM | prefill |
+|---:|---:|---:|
+| 40 | 3482 MiB | 236.1 |
+| 32 | 6491 MiB | 254.2 |
+| 26 | 7909 MiB (spills) | 171.3 |
+| 20 | 7824 MiB (spills) | 175.1 |
+
+Router entry uses `--n-cpu-moe 30` (7221 MiB measured once loaded). Chat
+through the router: short 7.6 s, 5.7 K-token prompt 32.6 s (prefill
+240 tok/s, decode 18.8 tok/s), cold load 21.5 s. It is now OpenCode's default
+model. Qwen3-30B-A3B stays registered as the fallback.
+
 ## Verified end-to-end
 
 Confirmed working in one session:
