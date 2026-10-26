@@ -52,6 +52,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- OpenCode's default local model is now `ornith-1.5-35b-a3b-ad-iq4_xs`
+  (39/40 in OpenCode and Hermes, see *Ornith 1.5 35B-A3B in the agent matrix*).
+
 - `router.py`: Qwen3-30B-A3B now keeps attention on the GPU and only 40 of 48
   layers' experts on the CPU (`-ngl 99 --n-cpu-moe 40 -ub 2048`). Prefill on
   long prompts 94 → 152 tok/s, decode 10 → 17 tok/s, VRAM 7.6 GB at `-c 65536`.

@@ -531,6 +531,9 @@ run-to-run variance measured on 2026-10-25. Short chat through the router:
 38.7 s (short) and 78.9 s (5.7 K-token prompt) because of the reasoning,
 against 7.6 s and 32.6 s for Qwen3.6 without reasoning.
 
+Since 2026-10-26 Ornith 35B-A3B is OpenCode's default model; Qwen3.6 stays as
+the fast fallback (no reasoning) and Hermes keeps Ornith 9B.
+
 ## Verified end-to-end
 
 Confirmed working in one session:
