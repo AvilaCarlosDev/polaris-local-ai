@@ -1,0 +1,12 @@
+### PENSANDO
+
+### RESPUESTA
+```python
+import re
+
+def parse_semver(s):
+    m = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', s)
+    if not m: raise ValueError(f'Invalid semver: {s}')
+    return tuple(map(int, m.groups()))
+```
+Usa `re.fullmatch` para validar estrictamente el formato `X.Y.Z` con dígitos. Convierte los grupos capturados a enteros y devuelve la tupla `(major, minor, patch)`.

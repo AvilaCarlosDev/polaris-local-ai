@@ -505,6 +505,32 @@ Use SD 3.5: 512² for drafts, 768² for finals. Two problems found:
 - `steps` did not change generation time (SD 1.5: 33 s at 20 and at 30), so it
   is probably not reaching sd-server. Not fixed yet.
 
+## Ornith 1.5 35B-A3B in the agent matrix — 2026-10-26
+
+Same tasks and graders as *Agent task matrix (4 rounds)* (R2–R4: semver,
+bugfix, extraccion, cli, refactor). OpenCode was upgraded to **2.1.2** between
+runs, so the OpenCode rows were rerun on 2.1.2 for both Ornith 35B and the
+current default (Qwen3.6 + ngram); `rondas.sh` now runs OpenCode with
+`--standalone` from the work dir (2.x dropped `--dir`). Raw rows:
+`docs/evidence/2026-10-26-matrix-*.jsonl`.
+
+Hidden-grader score · seconds:
+
+| Client | Model | semver | bugfix | extraccion | cli | refactor | Total | Time |
+|---|---|---|---|---|---|---|---:|---:|
+| OpenCode 2.1.2 | Ornith 35B-A3B | 10/10 · 329 | 7/7 · 253 | 10/10 · 112 | 6/7 · 342 | 6/6 · 512 | **39/40** | 1548 s |
+| OpenCode 2.1.2 | Qwen3.6 + ngram | 10/10 · 517 | 6/7 · 351 | 10/10 · 78 | 6/7 · 211 | 6/6 · 409 | 38/40 | 1566 s |
+| Hermes | Ornith 35B-A3B | 10/10 · 228 | 7/7 · 158 | 10/10 · 62 | 6/7 · 118 | 6/6 · 455 | **39/40** | 1021 s |
+| Hermes | Qwen3.6 (2026-10-25) | 10/10 · 233 | 6/7 · 242 | 10/10 · 83 | 6/7 · 282 | 6/6 · 242 | 38/40 | 1082 s |
+| Hermes | Ornith 9B (2026-10-25) | 10/10 · 243 | 6/7 · 239 | 10/10 · 46 | 5/7 · 251 | 6/6 · 113 | 37/40 | 892 s |
+
+Ornith 35B is the only model with `bugfix` 7/7 in both clients and matches
+Qwen3.6's total time; it reasons, so it spends more output tokens (refactor:
+6950 vs 4668 in OpenCode). One run per cell: a one-point gap is within the
+run-to-run variance measured on 2026-10-25. Short chat through the router:
+38.7 s (short) and 78.9 s (5.7 K-token prompt) because of the reasoning,
+against 7.6 s and 32.6 s for Qwen3.6 without reasoning.
+
 ## Verified end-to-end
 
 Confirmed working in one session:

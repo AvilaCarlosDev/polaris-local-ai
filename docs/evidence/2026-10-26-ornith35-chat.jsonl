@@ -1,0 +1,3 @@
+{"modelo": "ornith-1.5-35b-a3b-ad-iq4_xs", "prueba": "calentar", "total_s": 31.4, "primer_token_s": 29.0, "primera_respuesta_util_s": 31.3, "tok_entrada": 16, "tok_salida": 46, "chars_pensando": 171, "chars_respuesta": 2, "pp_tok_s": 28.9, "gen_tok_s": 19.0}
+{"modelo": "ornith-1.5-35b-a3b-ad-iq4_xs", "prueba": "corta", "total_s": 38.7, "primer_token_s": 1.8, "primera_respuesta_util_s": 28.0, "tok_entrada": 53, "tok_salida": 711, "chars_pensando": 1739, "chars_respuesta": 649, "pp_tok_s": 31.1, "gen_tok_s": 19.2}
+{"modelo": "ornith-1.5-35b-a3b-ad-iq4_xs", "prueba": "larga", "total_s": 78.9, "primer_token_s": 24.6, "primera_respuesta_util_s": 64.8, "tok_entrada": 5726, "tok_salida": 963, "chars_pensando": 2473, "chars_respuesta": 682, "pp_tok_s": 233.6, "gen_tok_s": 17.7}

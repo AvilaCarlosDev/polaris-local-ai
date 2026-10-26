@@ -1,0 +1,5 @@
+### PENSANDO
+The user is asking me to respond only with "OK". This is a simple instruction. I should comply and just respond with "OK".
+
+### RESPUESTA
+OK
