@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- `qwen3.6-35b-a3b-ud-iq4_xs-ngram` router id: Qwen3.6 with `--spec-type
+  ngram-mod` (edits 17.0 → 27.4 tok/s). `scripts/bench-spec/` with the
+  speculative-decoding and Bonsai 27B 1-bit measurements (Bonsai not adopted:
+  prefill ~4× slower than Qwen3.6 on the RX 580).
+- `scripts/bench-images-tasks.py`: SD 1.5 vs SD 3.5 on five everyday tasks.
+
 - `scripts/bench-agents/`: agent task matrix (OpenCode and Hermes) with five
   tasks and hidden graders, runner `rondas.sh`. Results of the 4-round run in
   `docs/BENCHMARKS.md` → *Agent task matrix (4 rounds) — 2026-10-25*.

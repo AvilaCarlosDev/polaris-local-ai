@@ -447,6 +447,64 @@ Findings:
 - Run-to-run variance is large (same model and task: 186 s vs 900 s). One run
   per cell is not enough to rank close pairs.
 
+## Speculative decoding and Bonsai 27B — 2026-10-25
+
+Scripts: `scripts/bench-spec/`. Raw rows: `docs/evidence/2026-10-25-qwen36-speculative.jsonl`,
+`…-bonsai27b-q1_0.jsonl`. Same server flags as the router entry, port 8085, temperature 0.
+
+**Qwen3.6-35B-A3B, decode tok/s:**
+
+| Task | none | `ngram-mod` | `ngram-simple` |
+|---|---:|---:|---:|
+| Return an edited ~110-line file | 17.0 (72 s) | **27.4 (47 s)**, 1034/1088 accepted | 25.7 (50 s) |
+| New code (Tetris HTML, 2048 tok) | 18.8 | 17.6 | 14.1 |
+| Short chat | 15.2 | 18.8 | 19.4 |
+
+`ngram-mod` speeds up edits (the agent's common case) and costs ~6 % on new
+code; no draft model, no extra VRAM. The chat difference is noise (nothing was
+drafted). `draft-mtp` fails: this unsloth GGUF has no MTP layers. Registered as
+the separate router id `qwen3.6-35b-a3b-ud-iq4_xs-ngram`; through the router
+the edit task ran at 28.0 tok/s (1036/1088 accepted).
+
+**Bonsai 27B 1-bit** (`prism-ml/Bonsai-27B-gguf`, `Q1_0`, 3.8 GB, Qwen3.6-27B
+dense) on mainline llama.cpp Vulkan (build `0c1e570`), all layers on GPU:
+
+| | Bonsai 27B Q1_0 | Qwen3.6-35B-A3B (router flags) |
+|---|---:|---:|
+| VRAM loaded, `-c 32768` | 5.6 GB | 7.2 GB at `-c 65536` |
+| Prefill (llama-bench pp512 / pp4096) | 62.7 / 60.6 tok/s | ~240 tok/s |
+| Decode (tg128) | 13.5 tok/s | 17–19 tok/s |
+| Edit task, none / `ngram-mod` | 13.0 / 24.0 tok/s | 17.0 / 27.4 tok/s |
+
+It fits and works, but prefill is ~4× slower than Qwen3.6 (dense 27B on a
+card with no int-dot or matrix cores; there is no Vulkan `mul_mat_vec` kernel
+for `Q1_0` in this build). OpenCode's first request is ~18 K tokens: ~5 min
+just to read it. Not adopted; the ternary Bonsai 2 is the same dense 27B
+workload and needs PrismML's fork, so it was not pursued. Quality was not
+measured.
+
+## Image models on everyday tasks — 2026-10-25
+
+`scripts/bench-images-tasks.py`, through the router, seed 42, five tasks
+(product photo, portrait, logo with text, social illustration, landscape).
+Raw rows: `docs/evidence/2026-10-25-image-tasks.jsonl`; contact sheets (left to
+right: SD1.5 base, SD1.5 tuned, SD3.5 base 512, SD3.5 tuned 768) in
+`docs/evidence/2026-10-25-image-tasks/`.
+
+| | SD 1.5 | SD 3.5 Medium 512² | SD 3.5 Medium 768² |
+|---|---:|---:|---:|
+| Time per image | 33 s | 61–74 s | 135 s |
+| Readable text ("POLARIS") | no | yes | yes, odd glyphs |
+| Overall | strong red/magenta cast, odd shapes | good drafts; portrait came out soft | best: sharp, natural light |
+
+Use SD 3.5: 512² for drafts, 768² for finals. Two problems found:
+
+- The router only adds SD 1.5's anti-red negative prompt when the prompt has no
+  `<sd_cpp_extra_args>`. Any client that sends extra args (even just a seed)
+  loses it, which explains the red cast in both SD 1.5 rows here.
+- `steps` did not change generation time (SD 1.5: 33 s at 20 and at 30), so it
+  is probably not reaching sd-server. Not fixed yet.
+
 ## Verified end-to-end
 
 Confirmed working in one session:

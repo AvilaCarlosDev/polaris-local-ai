@@ -78,6 +78,7 @@ MODELS = {
     "ornith-1.5-9b-nothink":                "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf",
     "qwen3-30b-a3b-instruct-2507-q4_k_m": "/var/cache/ai/models/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
     "qwen3.6-35b-a3b-ud-iq4_xs": "/var/cache/ai/models/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf",
+    "qwen3.6-35b-a3b-ud-iq4_xs-ngram": "/var/cache/ai/models/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf",
 }
 ALIASES = {"fast": "qwen2.5-coder-1.5b-instruct-q4_k_m",
            "code": "qwen2.5-coder-7b-instruct-q4_k_m",
@@ -97,6 +98,7 @@ CATEGORY_OF = {
     "qwen2.5-vl-3b-instruct-q4_k_m": "vision",
     "qwen3-30b-a3b-instruct-2507-q4_k_m": "multitarea",
     "qwen3.6-35b-a3b-ud-iq4_xs": "multitarea",
+    "qwen3.6-35b-a3b-ud-iq4_xs-ngram": "multitarea",
 }
 # Audio no pasa por el router: whisper-server vive en su propio puerto y expone
 # /inference (no la ruta OpenAI /v1/audio/transcriptions, que da 404 en esta
@@ -124,6 +126,16 @@ MODEL_ARGS = {
         "--host 0.0.0.0 --port 8080 -ngl 99 --n-cpu-moe 30 -ub 2048 "
         "-c 65536 --parallel 1 --threads 6 --reasoning-budget 0 "
         "--cache-type-k q8_0 --cache-type-v q8_0 --cache-reuse 4096 "
+    ),
+    "qwen3.6-35b-a3b-ud-iq4_xs-ngram": (
+        # 2026-10-25: mismo GGUF y flags que qwen3.6-35b-a3b-ud-iq4_xs mas
+        # decodificacion especulativa ngram-mod (sin modelo borrador, sin VRAM extra).
+        # Medido: devolver un archivo editado 17.0 -> 27.4 tok/s (1034/1088 aceptados);
+        # codigo nuevo 18.8 -> 17.6 tok/s. Este GGUF no trae capas MTP (draft-mtp falla).
+        "--host 0.0.0.0 --port 8080 -ngl 99 --n-cpu-moe 30 -ub 2048 "
+        "-c 65536 --parallel 1 --threads 6 --reasoning-budget 0 "
+        "--cache-type-k q8_0 --cache-type-v q8_0 --cache-reuse 4096 "
+        "--spec-type ngram-mod "
     ),
     "qwen3-30b-a3b-instruct-2507-q4_k_m": (
         # 2026-10-25: expertos MoE en CPU salvo 8 capas (-ngl 99 --n-cpu-moe 40) y
