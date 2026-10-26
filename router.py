@@ -70,20 +70,20 @@ SLOT_DIR = "/var/lib/llama-slots/"
 _restore_pending = threading.Event()
 
 MODELS = {
-    "qwen2.5-7b-instruct-q4_k_m":        f"{M}/qwen2.5-7b-instruct-q4_k_m.gguf",
-    "qwen2.5-coder-7b-instruct-q4_k_m":  f"{M}/qwen2.5-coder-7b-instruct-q4_k_m.gguf",
     "qwen2.5-coder-1.5b-instruct-q4_k_m": f"{M}/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
     "qwen2.5-vl-3b-instruct-q4_k_m":     f"{M}/qwen2.5-vl-3b-instruct-q4_k_m.gguf",
     "ornith-1.5-9b-q4_k_m":                "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf",
     "ornith-1.5-9b-nothink":                "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf",
-    "qwen3-30b-a3b-instruct-2507-q4_k_m": "/var/cache/ai/models/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
     "qwen3.6-35b-a3b-ud-iq4_xs": "/var/cache/ai/models/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf",
     "qwen3.6-35b-a3b-ud-iq4_xs-ngram": "/var/cache/ai/models/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf",
+    "ornith-1.5-35b-a3b-ad-iq4_xs": "/var/cache/ai/models/Ornith-1.5-35B-A3B-AD-IQ4_XS-IQ3_S.gguf",
 }
+# general y code apuntaban a los Qwen2.5 7B (borrados 2026-10-26); se mantienen
+# los nombres para no romper clientes viejos.
 ALIASES = {"fast": "qwen2.5-coder-1.5b-instruct-q4_k_m",
-           "code": "qwen2.5-coder-7b-instruct-q4_k_m",
+           "code": "qwen3.6-35b-a3b-ud-iq4_xs",
            "vision": "qwen2.5-vl-3b-instruct-q4_k_m",
-           "general": "qwen2.5-7b-instruct-q4_k_m",
+           "general": "ornith-1.5-9b-q4_k_m",
            "ornith": "ornith-1.5-9b-q4_k_m"}
 
 # Selector por categoria. Un modelo cae en UNA sola: es lo que el usuario ve
@@ -91,14 +91,12 @@ ALIASES = {"fast": "qwen2.5-coder-1.5b-instruct-q4_k_m",
 CATEGORY_ORDER = ("texto", "vision", "multitarea", "imagen", "audio")
 CATEGORY_OF = {
     "qwen2.5-coder-1.5b-instruct-q4_k_m": "texto",
-    "qwen2.5-7b-instruct-q4_k_m": "texto",
-    "qwen2.5-coder-7b-instruct-q4_k_m": "texto",
     "ornith-1.5-9b-q4_k_m": "texto",
     "ornith-1.5-9b-nothink": "texto",
     "qwen2.5-vl-3b-instruct-q4_k_m": "vision",
-    "qwen3-30b-a3b-instruct-2507-q4_k_m": "multitarea",
     "qwen3.6-35b-a3b-ud-iq4_xs": "multitarea",
     "qwen3.6-35b-a3b-ud-iq4_xs-ngram": "multitarea",
+    "ornith-1.5-35b-a3b-ad-iq4_xs": "multitarea",
 }
 # Audio no pasa por el router: whisper-server vive en su propio puerto y expone
 # /inference (no la ruta OpenAI /v1/audio/transcriptions, que da 404 en esta
@@ -137,11 +135,12 @@ MODEL_ARGS = {
         "--cache-type-k q8_0 --cache-type-v q8_0 --cache-reuse 4096 "
         "--spec-type ngram-mod "
     ),
-    "qwen3-30b-a3b-instruct-2507-q4_k_m": (
-        # 2026-10-25: expertos MoE en CPU salvo 8 capas (-ngl 99 --n-cpu-moe 40) y
-        # -ub 2048. Medido con -c 65536: 7.6 GB VRAM, lectura 152 tok/s y escritura
-        # 17 tok/s (antes ~94 y ~10). Con --n-cpu-moe 37 o menos la VRAM se desborda.
-        "--host 0.0.0.0 --port 8080 -ngl 99 --n-cpu-moe 40 -ub 2048 "
+    "ornith-1.5-35b-a3b-ad-iq4_xs": (
+        # 2026-10-26: AtomicChat AD-IQ4_XS-IQ3_S (qwen35moe como Qwen3.6). Razona.
+        # Medido con -c 65536: --n-cpu-moe 32 = 6.7 GB, 30 = 7.4 GB, 28 = 8.2 GB
+        # (al limite) sin ganancia; lectura ~200 tok/s, escritura ~18.7 tok/s.
+        # No trae capas MTP (draft-mtp falla).
+        "--host 0.0.0.0 --port 8080 -ngl 99 --n-cpu-moe 30 -ub 2048 "
         "-c 65536 --parallel 1 --threads 6 "
         "--cache-type-k q8_0 --cache-type-v q8_0 --cache-reuse 4096 "
     ),
@@ -200,7 +199,7 @@ def is_image(name):
 
 def resolve(name):
     if not name:
-        return "qwen2.5-7b-instruct-q4_k_m"
+        return "ornith-1.5-9b-q4_k_m"
     base = os.path.basename(name)
     base = re.sub(r"^/.*/", "", base)
     if base in MODELS:
@@ -208,7 +207,7 @@ def resolve(name):
     stem = base.removesuffix(".gguf")
     if stem in MODELS:
         return stem
-    return ALIASES.get(base) or ALIASES.get(stem) or "qwen2.5-7b-instruct-q4_k_m"
+    return ALIASES.get(base) or ALIASES.get(stem) or "ornith-1.5-9b-q4_k_m"
 
 
 def sd_up():
@@ -532,7 +531,7 @@ def models_payload(now=None, active=None):
     selector los muestra.
     """
     if now is None:
-        now = current() or "qwen2.5-7b-instruct-q4_k_m"
+        now = current() or "ornith-1.5-9b-q4_k_m"
     if active is None:
         active = units_active()
     entries = [{"id": name, "object": "model", "owned_by": "ia-local",

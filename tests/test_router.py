@@ -14,8 +14,8 @@ import router  # noqa: E402
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def test_six_text_vision_models():
-    assert len(router.MODELS) == 6
+def test_seven_text_vision_models():
+    assert len(router.MODELS) == 7
 
 
 def test_aliases_point_to_real_models():
@@ -65,20 +65,20 @@ def test_models_payload_marks_the_loaded_model():
 
 
 def test_models_payload_keeps_legacy_image_alias():
-    payload = router.models_payload(now="qwen2.5-7b-instruct-q4_k_m", active={})
+    payload = router.models_payload(now="ornith-1.5-9b-q4_k_m", active={})
     ids = {e["id"] for e in payload["data"]}
     assert {"imagen", "sd35", "sd15", router.AUDIO_ID} <= ids
 
 
 def test_models_payload_orders_by_category():
-    payload = router.models_payload(now="qwen2.5-7b-instruct-q4_k_m", active={})
+    payload = router.models_payload(now="ornith-1.5-9b-q4_k_m", active={})
     seen = [e["category"] for e in payload["data"]]
     order = list(router.CATEGORY_ORDER)
     assert seen == sorted(seen, key=order.index)
 
 
 def test_audio_entry_points_at_the_real_endpoint():
-    payload = router.models_payload(now="qwen2.5-7b-instruct-q4_k_m", active={})
+    payload = router.models_payload(now="ornith-1.5-9b-q4_k_m", active={})
     audio = next(e for e in payload["data"] if e["category"] == "audio")
     # whisper-server expone /inference, no la ruta OpenAI (/v1 da 404).
     assert audio["path"] == "/inference"
@@ -88,7 +88,7 @@ def test_audio_entry_points_at_the_real_endpoint():
 def test_audio_is_not_advertised_when_whisper_is_absent():
     # Una install fresca no trae whisper: anunciarlo seria una opcion muerta.
     payload = router.models_payload(
-        now="qwen2.5-7b-instruct-q4_k_m",
+        now="ornith-1.5-9b-q4_k_m",
         active={"whisper-server.service": "not-found"})
     assert router.AUDIO_ID not in {e["id"] for e in payload["data"]}
     assert "audio" not in {e["category"] for e in payload["data"]}
@@ -96,8 +96,8 @@ def test_audio_is_not_advertised_when_whisper_is_absent():
 
 def test_slot_file_is_keyed_by_model_and_slot():
     # El KV restore solo sirve con el mismo modelo: el nombre lo lleva.
-    assert router.slot_file("qwen2.5-7b-instruct-q4_k_m", 0) == \
-        "qwen2.5-7b-instruct-q4_k_m-0.bin"
+    assert router.slot_file("ornith-1.5-9b-q4_k_m", 0) == \
+        "ornith-1.5-9b-q4_k_m-0.bin"
     # fs_validate_filename del server rechaza separadores de ruta.
     assert "/" not in router.slot_file("foo/bar", 2)
 
@@ -119,7 +119,9 @@ def test_state_file_is_persistent():
 def test_text_models_allow_memory_autofit():
     for model in router.MODELS:
         flags = router.server_flags(model)
-        assert "-ngl" not in flags
+        # Los MoE fijan -ngl 99 y reparten con --n-cpu-moe (medido con -c 65536).
+        if "--n-cpu-moe" not in flags:
+            assert "-ngl" not in flags
         assert "-c 65536" in flags
         assert "--parallel 1" in flags
 

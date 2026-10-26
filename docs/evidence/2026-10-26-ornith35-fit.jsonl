@@ -1,0 +1,17 @@
+{"cfg":"ncmoe32","vram_bytes":6685577216}
+{"cfg": "ncmoe32", "prompt": "tetris", "s": 110.6, "tok_salida": 2048, "gen_tok_s": 18.6, "pp_tok_s": 39.0, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg": "ncmoe32", "prompt": "editar", "s": 72.1, "tok_salida": 1225, "gen_tok_s": 18.5, "pp_tok_s": 196.2, "draft_n": null, "draft_aceptados": null, "renombro_ok": true}
+{"cfg": "ncmoe32", "prompt": "chat", "s": 16.8, "tok_salida": 303, "gen_tok_s": 18.7, "pp_tok_s": 38.3, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg":"ncmoe30","vram_bytes":7435649024}
+{"cfg": "ncmoe30", "prompt": "tetris", "s": 110.6, "tok_salida": 2048, "gen_tok_s": 18.6, "pp_tok_s": 39.9, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg": "ncmoe30", "prompt": "editar", "s": 70.7, "tok_salida": 1225, "gen_tok_s": 18.9, "pp_tok_s": 199.7, "draft_n": null, "draft_aceptados": null, "renombro_ok": true}
+{"cfg": "ncmoe30", "prompt": "chat", "s": 16.9, "tok_salida": 303, "gen_tok_s": 18.7, "pp_tok_s": 36.4, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg":"ncmoe28","vram_bytes":8185761792}
+{"cfg": "ncmoe28", "prompt": "tetris", "s": 105.9, "tok_salida": 2048, "gen_tok_s": 19.5, "pp_tok_s": 40.7, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg": "ncmoe28", "prompt": "editar", "s": 72.1, "tok_salida": 1225, "gen_tok_s": 18.5, "pp_tok_s": 202.4, "draft_n": null, "draft_aceptados": null, "renombro_ok": true}
+{"cfg": "ncmoe28", "prompt": "chat", "s": 18.1, "tok_salida": 336, "gen_tok_s": 19.2, "pp_tok_s": 39.4, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg":"ncmoe30-mtp","error":"no arrancó","log":"0.03.483.115 E common_speculative_init_result: failed to create MTP context\n0.03.483.119 E srv    load_model: failed to create MTP context\n0.03.483.124 I srv    operator(): operator(): cleaning up before exit...\n0.03.483.370 E srv  llama_server: exiting due to model loading error\n"}
+{"cfg":"ncmoe30-ngram","vram_bytes":7435649024}
+{"cfg": "ncmoe30-ngram", "prompt": "tetris", "s": 110.1, "tok_salida": 2048, "gen_tok_s": 18.7, "pp_tok_s": 40.0, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg": "ncmoe30-ngram", "prompt": "editar", "s": 52.3, "tok_salida": 1225, "gen_tok_s": 26.4, "pp_tok_s": 200.0, "draft_n": 1088, "draft_aceptados": 1034, "renombro_ok": true}
+{"cfg": "ncmoe30-ngram", "prompt": "chat", "s": 16.4, "tok_salida": 303, "gen_tok_s": 19.2, "pp_tok_s": 38.4, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}

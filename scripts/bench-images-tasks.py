@@ -11,6 +11,7 @@ passes through untouched. Fixed seed per task so variants are comparable.
 Hold the ia-local lock while it runs. Prints one JSON line per image and
 downloads every PNG to DIR for review.
 """
+
 import argparse
 import json
 import os
@@ -22,13 +23,13 @@ ROUTER = os.environ.get("IA_ROUTER", "http://100.97.88.59:8090")
 
 TASKS = {
     "producto": "product photo of a white ceramic coffee mug on a wooden table, "
-                "morning window light, shallow depth of field",
+    "morning window light, shallow depth of field",
     "retrato": "portrait of a smiling female doctor in a white coat in a bright "
-               "modern clinic, professional photo",
+    "modern clinic, professional photo",
     "texto": "minimalist flat logo, the word POLARIS in bold sans-serif letters, "
-             "white background",
+    "white background",
     "ilustracion": "flat vector illustration of a laptop with growth charts and a "
-                   "rocket, pastel colors, social media banner",
+    "rocket, pastel colors, social media banner",
     "paisaje": "caribbean beach at sunset with palm trees, golden hour, wide shot",
 }
 
@@ -40,8 +41,12 @@ VARIANTS = {
     ("sd15", "base"): {},
     ("sd15", "mejora"): {"negative_prompt": NEG_SD15, "steps": 30},
     ("sd35", "base"): {},
-    ("sd35", "mejora"): {"negative_prompt": NEG_SD35, "steps": 28,
-                         "width": 768, "height": 768},
+    ("sd35", "mejora"): {
+        "negative_prompt": NEG_SD35,
+        "steps": 28,
+        "width": 768,
+        "height": 768,
+    },
 }
 SEED = 42
 
@@ -55,13 +60,25 @@ def key():
 
 def run(model, task, extra, api_key):
     args = {"seed": SEED, **extra}
-    prompt = TASKS[task] + " <sd_cpp_extra_args>" + json.dumps(args) + "</sd_cpp_extra_args>"
-    body = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}],
-                       "steps": extra.get("steps", 20),
-                       "name": f"bench-{task}"}).encode()
-    req = urllib.request.Request(f"{ROUTER}/v1/chat/completions", data=body,
-                                 headers={"Content-Type": "application/json",
-                                          "Authorization": f"Bearer {api_key}"})
+    prompt = (
+        TASKS[task] + " <sd_cpp_extra_args>" + json.dumps(args) + "</sd_cpp_extra_args>"
+    )
+    body = json.dumps(
+        {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "steps": extra.get("steps", 20),
+            "name": f"bench-{task}",
+        }
+    ).encode()
+    req = urllib.request.Request(
+        f"{ROUTER}/v1/chat/completions",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+    )
     t0 = time.time()
     with urllib.request.urlopen(req, timeout=1200) as r:
         text = json.load(r)["choices"][0]["message"]["content"]

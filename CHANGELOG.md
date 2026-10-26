@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- `ornith-1.5-35b-a3b-ad-iq4_xs` (AtomicChat `AD-IQ4_XS-IQ3_S`, 16.4 GiB):
+  `--n-cpu-moe 30` with `-c 65536` (7.4 GB VRAM; 28 reaches 8.2 GB with no
+  gain). Under evaluation; no MTP layers in this GGUF.
+
 - `qwen3.6-35b-a3b-ud-iq4_xs-ngram` router id: Qwen3.6 with `--spec-type
   ngram-mod` (edits 17.0 → 27.4 tok/s). `scripts/bench-spec/` with the
   speculative-decoding and Bonsai 27B 1-bit measurements (Bonsai not adopted:
@@ -39,6 +43,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `docs/HERMES.md` gained **Keep a stalled request from hanging**:
   `request_timeout_seconds` / `stale_timeout_seconds` on the local provider and
   keeping `fallback_providers: []`, with the reasoning for each value.
+
+### Removed
+
+- Router entries for Qwen2.5 7B, Qwen2.5 Coder 7B and Qwen3-30B-A3B (files
+  deleted from the server on 2026-10-26). The `general` and `code` aliases
+  now point at Ornith 9B and Qwen3.6, so old clients keep working.
 
 ### Changed
 

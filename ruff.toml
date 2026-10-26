@@ -5,3 +5,10 @@
 # bridge must answer with an error instead of dying on an unexpected
 # exception — each catch site documents why.
 select = ["E4", "E7", "E9", "F", "I", "PLW", "FURB", "EXE"]
+
+# Inputs for the agent benchmark: code the models must fix or refactor, and
+# the untouched original the refactor grader compares against. Linting them
+# would change the tasks.
+[lint.per-file-ignores]
+"scripts/bench-agents/fixtures/**" = ["E", "F", "I", "PLW", "FURB", "EXE"]
+"scripts/bench-agents/graders/reporte_original.py" = ["E", "F", "I", "PLW", "FURB", "EXE"]
