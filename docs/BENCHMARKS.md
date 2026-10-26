@@ -392,6 +392,61 @@ through the router: short 7.6 s, 5.7 K-token prompt 32.6 s (prefill
 240 tok/s, decode 18.8 tok/s), cold load 21.5 s. It is now OpenCode's default
 model. Qwen3-30B-A3B stays registered as the fallback.
 
+## Agent task matrix (4 rounds) — 2026-10-25
+
+Four models × two agent clients × six tasks, scored by hidden graders
+(`scripts/bench-agents/`). R1 and R2 run `semver` (R2 repeats R1 to measure
+run-to-run variance); R3 adds `bugfix` and `extraccion`; R4 adds `cli` and
+`refactor`. OpenCode runs `--agent gentleman` with the slimmed prompt; Hermes
+runs `--oneshot`. Cap 900 s per run. Raw rows:
+`docs/evidence/2026-10-25-matrix-r1-*.jsonl`, `…-matrix-r2-r4.jsonl`,
+combined in `…-matrix-r1-r4-all.json`.
+
+Hidden-grader score per task (time in seconds):
+
+| Model | Client | semver R1 | semver R2 | bugfix | extraccion | cli | refactor |
+|---|---|---|---|---|---|---|---|
+| Ornith 9B | OpenCode | 10/10 · 267 | 10/10 · 430 | 7/7 · 342 | 10/10 · 165 | 6/7 · 649 | 6/6 · 546 |
+| Ornith 9B | Hermes | 10/10 · 371 | 10/10 · 243 | 6/7 · 239 | 10/10 · 46 | 5/7 · 251 | 6/6 · 113 |
+| Ornith 9B nothink | OpenCode | 10/10 · 900† | 10/10 · 186 | 7/7 · 269 | 10/10 · 148 | 6/7 · 199 | 6/6 · 652 |
+| Ornith 9B nothink | Hermes | 10/10 · 274 | 10/10 · 904† | 6/7 · 230 | 10/10 · 39 | 3/7 · 201 | 2/6 · 272‡ |
+| Qwen3-30B-A3B | OpenCode | 10/10 · 323 | 9/10 · 268 | 7/7 · 332 | 9/10 · 231 | 6/7 · 394 | 3/6 · 407 |
+| Qwen3-30B-A3B | Hermes | 9/10 · 332 | 9/10 · 325 | 7/7 · 353 | 9/10 · 210 | 6/7 · 341 | 3/6 · 902† |
+| Qwen3.6-35B-A3B | OpenCode | 10/10 · 556 | 0/10 · 367§ | 6/7 · 269 | 10/10 · 136 | 6/7 · 319 | 6/6 · 815 |
+| Qwen3.6-35B-A3B | Hermes | 10/10 · 224 | 10/10 · 233 | 6/7 · 242 | 10/10 · 83 | 6/7 · 282 | 6/6 · 242 |
+
+† hit the 900 s cap (files were already written and graded).
+‡ Hermes exited with an error.
+§ wrote correct code (10/10 when graded in place) to `~/.tmp/semver-test/`
+instead of the work dir; scored 0 because it ignored the requested location.
+
+Totals:
+
+| Model + client | Score | Mean time per task |
+|---|---:|---:|
+| Ornith 9B + OpenCode | 49/50 (98 %) | 400 s |
+| Ornith 9B nothink + OpenCode | 49/50 (98 %) | 392 s |
+| Qwen3.6 + Hermes | 48/50 (96 %) | 218 s |
+| Ornith 9B + Hermes | 47/50 (94 %) | 210 s |
+| Qwen3-30B + OpenCode | 44/50 (88 %) | 326 s |
+| Qwen3-30B + Hermes | 43/50 (86 %) | 410 s |
+| Ornith 9B nothink + Hermes | 41/50 (82 %) | 320 s |
+| Qwen3.6 + OpenCode | 38/50 (76 %; 38/40 without §) | 410 s |
+
+Findings:
+
+- On bounded tasks Ornith 9B (reasoning on) matches Qwen3.6. Larger total
+  parameters did not buy a better score here; long or knowledge-heavy tasks
+  were not measured.
+- Hermes is about 2× faster than OpenCode with the same model (smaller
+  startup prompt); on `extraccion` it is 3–4× faster.
+- Reasoning off (`ornith-1.5-9b-nothink`) is fine in OpenCode but loses
+  points on the harder tasks in Hermes. Keep reasoning on for Hermes.
+- Qwen3-30B-A3B is the weakest: 9/10 on `semver`/`extraccion` and it broke
+  the program's output in `refactor` with both clients.
+- Run-to-run variance is large (same model and task: 186 s vs 900 s). One run
+  per cell is not enough to rank close pairs.
+
 ## Verified end-to-end
 
 Confirmed working in one session:

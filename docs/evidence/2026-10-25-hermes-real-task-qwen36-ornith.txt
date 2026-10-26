@@ -1,0 +1,44 @@
+== qwen36 (qwen3.6-35b-a3b-ud-iq4_xs) inicio 17:10:19
+== qwen36 fin 17:15:39 | 320s | rc=0
+__pycache__
+semver.py
+test_semver.py
+22 passed in 0.03s
+22 tests passed, 0 failed. Los tests cubren 11 versiones válidas (básicas, con pre-release y con build metadata) y 9 casos inválidos (formato incorrecto, leading zeros, caracteres no numéricos, etc.).
+
+session_id: 20261025_171023_95fa8b
+   prompt eval time: 21149 tok, 112870.37 ms, 187.37 tok/s
+   eval time: 984 tok, 57261.94 ms, 17.17 tok/s
+   prompt eval time: 1377 tok, 9485.12 ms, 145.17 tok/s
+   eval time: 116 tok, 6732.87 ms, 17.08 tok/s
+   prompt eval time: 72 tok, 2189.80 ms, 32.88 tok/s
+   eval time: 51 tok, 2937.48 ms, 17.02 tok/s
+   prompt eval time: 218 tok, 3511.72 ms, 62.08 tok/s
+   eval time: 64 tok, 3721.82 ms, 16.93 tok/s
+   prompt eval time: 377 tok, 4343.48 ms, 86.80 tok/s
+   eval time: 126 tok, 7547.26 ms, 16.56 tok/s
+   prompt eval time: 241 tok, 3717.92 ms, 64.82 tok/s
+   eval time: 113 tok, 6840.82 ms, 16.37 tok/s
+   prompt eval time: 240 tok, 3679.80 ms, 65.22 tok/s
+   eval time: 56 tok, 3245.91 ms, 16.94 tok/s
+== ornith (ornith-1.5-9b-q4_k_m) inicio 17:15:41
+== ornith fin 17:18:49 | 188s | rc=0
+__pycache__
+semver.py
+test_semver.py
+10 passed in 0.01s
+Nota: en el test válido agregué de forma accidental un nombre de test sin sentido (`test_valid_prerelease_prerelease_single_digit`); lo dejé igual porque funciona, pero si quieres lo renombraría a alg
+
+session_id: 20261025_171545_d42b9c
+   prompt eval time: 20093 tok, 122892.07 ms, 163.50 tok/s
+   eval time: 30 tok, 1295.33 ms, 22.39 tok/s
+   prompt eval time: 163 tok, 1418.64 ms, 114.90 tok/s
+   eval time: 231 tok, 10286.71 ms, 22.36 tok/s
+   prompt eval time: 433 tok, 3318.84 ms, 130.47 tok/s
+   eval time: 345 tok, 15475.83 ms, 22.23 tok/s
+   prompt eval time: 200 tok, 1849.63 ms, 108.13 tok/s
+   eval time: 32 tok, 1398.22 ms, 22.17 tok/s
+   prompt eval time: 54 tok, 697.10 ms, 77.46 tok/s
+   eval time: 79 tok, 3524.45 ms, 22.13 tok/s
+
+[exited with code 0]

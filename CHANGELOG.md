@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- `scripts/bench-agents/`: agent task matrix (OpenCode and Hermes) with five
+  tasks and hidden graders, runner `rondas.sh`. Results of the 4-round run in
+  `docs/BENCHMARKS.md` → *Agent task matrix (4 rounds) — 2026-10-25*.
+- `ornith-1.5-9b-nothink` alias in `router.py` (Ornith 9B with
+  `--reasoning-budget 0`).
+
 - **Qwen3.6-35B-A3B** (`qwen3.6-35b-a3b-ud-iq4_xs`, unsloth `UD-IQ4_XS`) in
   `router.py`: `-ngl 99 --n-cpu-moe 30 -ub 2048 --reasoning-budget 0`. Fastest
   model measured for agent use (244 s on the real OpenCode task, 23/23 tests).

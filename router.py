@@ -75,6 +75,7 @@ MODELS = {
     "qwen2.5-coder-1.5b-instruct-q4_k_m": f"{M}/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
     "qwen2.5-vl-3b-instruct-q4_k_m":     f"{M}/qwen2.5-vl-3b-instruct-q4_k_m.gguf",
     "ornith-1.5-9b-q4_k_m":                "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf",
+    "ornith-1.5-9b-nothink":                "/var/cache/ai/models/Ornith-1.5-9B-Q4_K_M.gguf",
     "qwen3-30b-a3b-instruct-2507-q4_k_m": "/var/cache/ai/models/Qwen_Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
     "qwen3.6-35b-a3b-ud-iq4_xs": "/var/cache/ai/models/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf",
 }
@@ -92,6 +93,7 @@ CATEGORY_OF = {
     "qwen2.5-7b-instruct-q4_k_m": "texto",
     "qwen2.5-coder-7b-instruct-q4_k_m": "texto",
     "ornith-1.5-9b-q4_k_m": "texto",
+    "ornith-1.5-9b-nothink": "texto",
     "qwen2.5-vl-3b-instruct-q4_k_m": "vision",
     "qwen3-30b-a3b-instruct-2507-q4_k_m": "multitarea",
     "qwen3.6-35b-a3b-ud-iq4_xs": "multitarea",
@@ -107,6 +109,14 @@ AUDIO_INFO = {"port": 8081, "path": "/inference"}
 # con -ngl 99 contra 22.26 con auto-fit). Sin -ngl, llama.cpp calcula sola cuantas
 # capas caben y deja ~1 GiB de headroom para el KV cache.
 MODEL_ARGS = {
+    "ornith-1.5-9b-nothink": (
+        # 2026-10-25: mismo GGUF que ornith-1.5-9b-q4_k_m pero sin razonamiento.
+        # Ornith cabe entero en la GPU: -ub 1024/2048 y 6 hilos no mejoran
+        # (pp8192 170-180 tok/s, tg 28.6 tok/s en todas las variantes).
+        f"--host 0.0.0.0 --port 8080 -c {CTX} -ub 512 --parallel 1 "
+        "--cache-type-k q8_0 --cache-type-v q8_0 --threads 4 "
+        "--cache-reuse 4096 --reasoning-budget 0 "
+    ),
     "qwen3.6-35b-a3b-ud-iq4_xs": (
         # 2026-10-25: Qwen3.6-35B-A3B (qwen35moe, atencion mayormente lineal, KV chico).
         # Medido con -c 65536: --n-cpu-moe 32 = 6.3 GB VRAM y lectura 254 tok/s;
