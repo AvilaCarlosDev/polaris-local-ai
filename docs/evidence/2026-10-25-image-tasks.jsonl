@@ -1,0 +1,20 @@
+{"modelo": "sd15", "variante": "base", "tarea": "producto", "s": 33.5, "archivo": "bench-producto-sd15-223611.png"}
+{"modelo": "sd15", "variante": "base", "tarea": "retrato", "s": 33.2, "archivo": "bench-retrato-sd15-223645.png"}
+{"modelo": "sd15", "variante": "base", "tarea": "texto", "s": 33.5, "archivo": "bench-texto-sd15-223718.png"}
+{"modelo": "sd15", "variante": "base", "tarea": "ilustracion", "s": 33.3, "archivo": "bench-ilustracion-sd15-223752.png"}
+{"modelo": "sd15", "variante": "base", "tarea": "paisaje", "s": 33.3, "archivo": "bench-paisaje-sd15-223825.png"}
+{"modelo": "sd15", "variante": "mejora", "tarea": "producto", "steps": 30, "s": 33.3, "archivo": "bench-producto-sd15-223858.png"}
+{"modelo": "sd15", "variante": "mejora", "tarea": "retrato", "steps": 30, "s": 33.4, "archivo": "bench-retrato-sd15-223932.png"}
+{"modelo": "sd15", "variante": "mejora", "tarea": "texto", "steps": 30, "s": 33.4, "archivo": "bench-texto-sd15-224006.png"}
+{"modelo": "sd15", "variante": "mejora", "tarea": "ilustracion", "steps": 30, "s": 33.3, "archivo": "bench-ilustracion-sd15-224039.png"}
+{"modelo": "sd15", "variante": "mejora", "tarea": "paisaje", "steps": 30, "s": 33.4, "archivo": "bench-paisaje-sd15-224113.png"}
+{"modelo": "sd35", "variante": "base", "tarea": "producto", "s": 73.6, "archivo": "bench-producto-sd35-224226.png"}
+{"modelo": "sd35", "variante": "base", "tarea": "retrato", "s": 64.5, "archivo": "bench-retrato-sd35-224331.png"}
+{"modelo": "sd35", "variante": "base", "tarea": "texto", "s": 61.4, "archivo": "bench-texto-sd35-224433.png"}
+{"modelo": "sd35", "variante": "base", "tarea": "ilustracion", "s": 61.5, "archivo": "bench-ilustracion-sd35-224534.png"}
+{"modelo": "sd35", "variante": "base", "tarea": "paisaje", "s": 61.6, "archivo": "bench-paisaje-sd35-224636.png"}
+{"modelo": "sd35", "variante": "mejora", "tarea": "producto", "steps": 28, "width": 768, "height": 768, "s": 135.9, "archivo": "bench-producto-sd35-224851.png"}
+{"modelo": "sd35", "variante": "mejora", "tarea": "retrato", "steps": 28, "width": 768, "height": 768, "s": 136.0, "archivo": "bench-retrato-sd35-225107.png"}
+{"modelo": "sd35", "variante": "mejora", "tarea": "texto", "steps": 28, "width": 768, "height": 768, "s": 135.7, "archivo": "bench-texto-sd35-225323.png"}
+{"modelo": "sd35", "variante": "mejora", "tarea": "ilustracion", "steps": 28, "width": 768, "height": 768, "s": 135.5, "archivo": "bench-ilustracion-sd35-225539.png"}
+{"modelo": "sd35", "variante": "mejora", "tarea": "paisaje", "steps": 28, "width": 768, "height": 768, "s": 134.7, "archivo": "bench-paisaje-sd35-225754.png"}

@@ -1,0 +1,12 @@
+{"modelo":"ornith-1.5-9b-q4_k_m","prueba":"chat","s":163}
+{"modelo":"ornith-1.5-9b-q4_k_m","prueba":"opencode","s":267,"rc":0,"tests":"24 passed in 0.01s","server":{"peticiones": 7, "tok_entrada_total": 26194, "tok_entrada_1a": 5726, "pp_1a_tok_s": 182.8, "tok_salida_total": 6117, "gen_tok_s_media": 24.2}}
+{"modelo":"ornith-1.5-9b-q4_k_m","prueba":"hermes","s":371,"rc":0,"tests":"18 passed in 0.01s","server":{"peticiones": 14, "tok_entrada_total": 27183, "tok_entrada_1a": 20105, "pp_1a_tok_s": 162.4, "tok_salida_total": 3798, "gen_tok_s_media": 21.5}}
+{"modelo":"ornith-1.5-9b-nothink","prueba":"chat","s":49}
+{"modelo":"ornith-1.5-9b-nothink","prueba":"opencode","s":900,"rc":124,"tests":"3 failed, 18 passed in 0.03s","server":{"peticiones": 46, "tok_entrada_total": 53237, "tok_entrada_1a": 5726, "pp_1a_tok_s": 182.0, "tok_salida_total": 10413, "gen_tok_s_media": 20.0}}
+{"modelo":"ornith-1.5-9b-nothink","prueba":"hermes","s":274,"rc":0,"tests":"19 passed in 0.01s","server":{"peticiones": 10, "tok_entrada_total": 23522, "tok_entrada_1a": 20101, "pp_1a_tok_s": 161.2, "tok_salida_total": 2405, "gen_tok_s_media": 22.0}}
+{"modelo":"qwen3-30b-a3b-instruct-2507-q4_k_m","prueba":"chat","s":88}
+{"modelo":"qwen3-30b-a3b-instruct-2507-q4_k_m","prueba":"opencode","s":323,"rc":0,"tests":"2 failed, 4 passed in 0.02s","server":{"peticiones": 8, "tok_entrada_total": 25659, "tok_entrada_1a": 5571, "pp_1a_tok_s": 178.8, "tok_salida_total": 1565, "gen_tok_s_media": 13.0}}
+{"modelo":"qwen3-30b-a3b-instruct-2507-q4_k_m","prueba":"hermes","s":332,"rc":0,"tests":"1 failed, 4 passed in 0.02s","server":{"peticiones": 2, "tok_entrada_total": 21865, "tok_entrada_1a": 20580, "pp_1a_tok_s": 87.8, "tok_salida_total": 731, "gen_tok_s_media": 12.1}}
+{"modelo":"qwen3.6-35b-a3b-ud-iq4_xs","prueba":"chat","s":81}
+{"modelo":"qwen3.6-35b-a3b-ud-iq4_xs","prueba":"opencode","s":556,"rc":0,"tests":"27 passed in 0.02s","server":{"peticiones": 16, "tok_entrada_total": 44640, "tok_entrada_1a": 5726, "pp_1a_tok_s": 237.3, "tok_salida_total": 4481, "gen_tok_s_media": 15.5}}
+{"modelo":"qwen3.6-35b-a3b-ud-iq4_xs","prueba":"hermes","s":224,"rc":0,"tests":"24 passed in 0.02s","server":{"peticiones": 5, "tok_entrada_total": 23583, "tok_entrada_1a": 21164, "pp_1a_tok_s": 187.2, "tok_salida_total": 1357, "gen_tok_s_media": 17.1}}

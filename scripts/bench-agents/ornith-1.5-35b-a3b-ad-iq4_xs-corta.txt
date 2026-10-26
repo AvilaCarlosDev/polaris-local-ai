@@ -1,0 +1,52 @@
+### PENSANDO
+The user wants a Python function `parse_semver(s)` that returns (major, minor, patch) and raises ValueError if the format is invalid. They want only the code and 2 lines of explanation.
+
+Let me write a semver parser. Semantic Versioning 2.0.0 format is:
+- major.minor.patch
+- Optional pre-release and build metadata
+
+The user asks for (major, minor, patch) tuple. Let me use regex to validate the format.
+
+Let me write a clean implementation using regex.
+
+Semver format: `MAJOR.MINOR.PATCH` with optional `-prerelease` and `+build`.
+
+Let me write:
+
+```python
+import re
+
+def parse_semver(s):
+    m = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-+]+)?', s)
+    if not m:
+        raise ValueError(f"Invalid semantic version: {s!r}")
+    return tuple(int(x) for x in m.groups())
+```
+
+This validates the format and returns the three integers.
+
+Let me make sure the regex is correct:
+- `(\d+)` - major
+- `\.` - dot
+- `(\d+)` - minor
+- `\.` - dot
+- `(\d+)` - patch
+- `(?:-[0-9A-Za-z.-]+)?` - optional pre-release
+- `(?:\+[0-9A-Za-z.-+]+)?` - optional build metadata
+
+This looks good. Let me keep it concise.
+
+The user wants only the code and 2 lines of explanation. Let me write in Spanish since the question is in Spanish.
+
+### RESPUESTA
+```python
+import re
+
+def parse_semver(s):
+    m = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-+]+)?', s)
+    if not m:
+        raise ValueError(f"Formato semver inválido: {s!r}")
+    return tuple(int(x) for x in m.groups())
+```
+
+Valido el formato con una expresión regular que acepta la versión base y opcionalmente pre-lanzamiento (`-`) y metadatos de construcción (`+`). Si no coincide, lanzo `ValueError`; si coincide, devuelvo los tres componentes como enteros.

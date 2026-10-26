@@ -8,6 +8,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- `ornith-1.5-35b-a3b-ad-iq4_xs` (AtomicChat `AD-IQ4_XS-IQ3_S`, 16.4 GiB):
+  `--n-cpu-moe 30` with `-c 65536` (7.4 GB VRAM; 28 reaches 8.2 GB with no
+  gain). Under evaluation; no MTP layers in this GGUF.
+
+- `qwen3.6-35b-a3b-ud-iq4_xs-ngram` router id: Qwen3.6 with `--spec-type
+  ngram-mod` (edits 17.0 → 27.4 tok/s). `scripts/bench-spec/` with the
+  speculative-decoding and Bonsai 27B 1-bit measurements (Bonsai not adopted:
+  prefill ~4× slower than Qwen3.6 on the RX 580).
+- `scripts/bench-images-tasks.py`: SD 1.5 vs SD 3.5 on five everyday tasks.
+
+- `scripts/bench-agents/`: agent task matrix (OpenCode and Hermes) with five
+  tasks and hidden graders, runner `rondas.sh`. Results of the 4-round run in
+  `docs/BENCHMARKS.md` → *Agent task matrix (4 rounds) — 2026-10-25*.
+- `ornith-1.5-9b-nothink` alias in `router.py` (Ornith 9B with
+  `--reasoning-budget 0`).
+
+- **Qwen3.6-35B-A3B** (`qwen3.6-35b-a3b-ud-iq4_xs`, unsloth `UD-IQ4_XS`) in
+  `router.py`: `-ngl 99 --n-cpu-moe 30 -ub 2048 --reasoning-budget 0`. Fastest
+  model measured for agent use (244 s on the real OpenCode task, 23/23 tests).
+  See `docs/BENCHMARKS.md` → *MoE offload tuning … 2026-10-25*.
+
 - `docs/RELEASE-COMPARISON.md` gained the **post-maintenance comparison
   (2026-10-23)** with raw rows in `docs/evidence/2026-10-23-postmant-text.jsonl`:
   all six models re-measured with `scripts/bench-release.py` after the venator
@@ -22,6 +43,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `docs/HERMES.md` gained **Keep a stalled request from hanging**:
   `request_timeout_seconds` / `stale_timeout_seconds` on the local provider and
   keeping `fallback_providers: []`, with the reasoning for each value.
+
+### Removed
+
+- Router entries for Qwen2.5 7B, Qwen2.5 Coder 7B and Qwen3-30B-A3B (files
+  deleted from the server on 2026-10-26). The `general` and `code` aliases
+  now point at Ornith 9B and Qwen3.6, so old clients keep working.
+
+### Changed
+
+- OpenCode's default local model is now `ornith-1.5-35b-a3b-ad-iq4_xs`
+  (39/40 in OpenCode and Hermes, see *Ornith 1.5 35B-A3B in the agent matrix*).
+
+- `router.py`: Qwen3-30B-A3B now keeps attention on the GPU and only 40 of 48
+  layers' experts on the CPU (`-ngl 99 --n-cpu-moe 40 -ub 2048`). Prefill on
+  long prompts 94 → 152 tok/s, decode 10 → 17 tok/s, VRAM 7.6 GB at `-c 65536`.
 
 ## [0.4.0] - 2026-10-22
 

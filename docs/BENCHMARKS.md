@@ -310,6 +310,230 @@ sudo python3 scripts/bench-slots.py --corpus docs/*.md router.py setup.sh \
   --chars 64500 --reps 3
 ```
 
+## MoE offload tuning, OpenCode prompt size and Qwen3.6 — 2026-10-25
+
+Raw rows: `docs/evidence/2026-10-25-*`. All runs held the client lock
+(`ia-local.sh`) so nothing else touched the single slot.
+
+### 1. Qwen3-30B-A3B: keep attention on the GPU, experts on the CPU
+
+The old flags let llama.cpp auto-fit whole layers (`-ub 512`, no `-ngl`), so
+attention for most layers ran on the CPU and long prompts collapsed
+(47 tok/s prefill at ~32 K tokens in a real OpenCode session).
+`llama-bench` (`-p 512,8192 -n 64`, q8_0 KV, 6 threads):
+
+| Config | pp512 | pp8192 | tg64 |
+|---|---:|---:|---:|
+| auto-fit, `-ub 512` (old) | 141.9 | 94.3 | 10.1 |
+| `-ngl 99 --n-cpu-moe 48 -ub 512` | 139.9 | 102.6 | 20.0 |
+| `-ngl 99 --n-cpu-moe 48 -ub 2048` | 139.8 | 146.9 | 19.8 |
+| `-ngl 99 --n-cpu-moe 40 -ub 2048` | 150.6 | 150.0 | 22.3 |
+| `-ngl 99 --n-cpu-moe 34 -ub 2048` | 159.2 | 152.2 | 23.8 |
+
+`llama-bench` allocates a tiny KV cache, so the winner was re-checked with the
+real server (`-c 65536`, ~9.9 K-token prompt):
+
+| `--n-cpu-moe` | VRAM | prefill | decode |
+|---:|---:|---:|---:|
+| 44 | 6292 MiB | 150.8 | 15.5 |
+| **40** | **7743 MiB** | **151.9** | **17.0** |
+| 37 | 8116 MiB (spills) | 100.6 | 16.3 |
+| 34 | 8122 MiB (spills) | 101.0 | 13.9 |
+
+`router.py` now uses `-ngl 99 --n-cpu-moe 40 -ub 2048` for this model. Through
+the router, the 5.6 K-token chat test went from 59.0 s to **39.3 s** and cold
+load from 39.5 s to 24.5 s.
+
+### 2. OpenCode's first request was ~32 K tokens
+
+Captured with a stub OpenAI server (`docs/evidence/2026-10-25-opencode-prompt-size.json`):
+
+| | chars | real tokens | skills | tools |
+|---|---:|---:|---:|---:|
+| Before | 153,320 | 32,463 | 78 | 35 |
+| After | 79,952 | 18,231 | 7 | 19 |
+
+What it was: OpenCode also loads every `~/.claude/skills` skill (78, mostly
+unrelated to coding, ~14 K tokens), the full Engram `agent` tool profile
+(19 tools, ~23 K chars) and context7. Fixes, all client-side:
+`OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`, a `permission.skill` allow-list,
+context7 disabled, and Engram started with only the 8 tools its protocol uses
+(`--tools=mem_current_project,mem_context,mem_search,mem_get_observation,mem_save,mem_session_summary,mem_update,mem_suggest_topic_key`).
+`gentle-orchestrator` (87 K-char prompt) was replaced as default agent by
+`gentleman`.
+
+### 3. Same real OpenCode task, three setups
+
+Task: write `semver.py` + pytest tests and run them (`opencode run --auto`,
+same prompt each time, 15 min cap).
+
+| Setup | Wall time | First-request prefill | Result |
+|---|---:|---:|---|
+| `gentle-orchestrator` + Ornith-1.5-9B | >900 s (timeout) | 50,882 tok @ 128 tok/s | test file had a syntax error |
+| `gentleman` + Qwen3-30B, old flags, full prompt | 805 s | 32,463 tok @ 47 tok/s | 4/5 pass (accepts negatives) |
+| `gentleman` + Qwen3-30B, tuned, slim prompt | 283 s | 18,231 tok @ 96 tok/s | 3/3 pass (negatives not tested) |
+| **`gentleman` + Qwen3.6-35B-A3B, slim prompt** | **244 s** | **18,639 tok @ 192 tok/s** | **23/23 pass, SemVer-correct regex** |
+
+### 4. Qwen3.6-35B-A3B (unsloth `UD-IQ4_XS`, 16.5 GiB)
+
+Hybrid linear-attention MoE (`qwen35moe`, the same family as Ornith-1.5-9B),
+so the KV cache is small and long prefill holds up. Reasoning disabled with
+`--reasoning-budget 0`. Real server, `-c 65536`, ~9 K-token prompt:
+
+| `--n-cpu-moe` | VRAM | prefill |
+|---:|---:|---:|
+| 40 | 3482 MiB | 236.1 |
+| 32 | 6491 MiB | 254.2 |
+| 26 | 7909 MiB (spills) | 171.3 |
+| 20 | 7824 MiB (spills) | 175.1 |
+
+Router entry uses `--n-cpu-moe 30` (7221 MiB measured once loaded). Chat
+through the router: short 7.6 s, 5.7 K-token prompt 32.6 s (prefill
+240 tok/s, decode 18.8 tok/s), cold load 21.5 s. It is now OpenCode's default
+model. Qwen3-30B-A3B stays registered as the fallback.
+
+## Agent task matrix (4 rounds) — 2026-10-25
+
+Four models × two agent clients × six tasks, scored by hidden graders
+(`scripts/bench-agents/`). R1 and R2 run `semver` (R2 repeats R1 to measure
+run-to-run variance); R3 adds `bugfix` and `extraccion`; R4 adds `cli` and
+`refactor`. OpenCode runs `--agent gentleman` with the slimmed prompt; Hermes
+runs `--oneshot`. Cap 900 s per run. Raw rows:
+`docs/evidence/2026-10-25-matrix-r1-*.jsonl`, `…-matrix-r2-r4.jsonl`,
+combined in `…-matrix-r1-r4-all.json`.
+
+Hidden-grader score per task (time in seconds):
+
+| Model | Client | semver R1 | semver R2 | bugfix | extraccion | cli | refactor |
+|---|---|---|---|---|---|---|---|
+| Ornith 9B | OpenCode | 10/10 · 267 | 10/10 · 430 | 7/7 · 342 | 10/10 · 165 | 6/7 · 649 | 6/6 · 546 |
+| Ornith 9B | Hermes | 10/10 · 371 | 10/10 · 243 | 6/7 · 239 | 10/10 · 46 | 5/7 · 251 | 6/6 · 113 |
+| Ornith 9B nothink | OpenCode | 10/10 · 900† | 10/10 · 186 | 7/7 · 269 | 10/10 · 148 | 6/7 · 199 | 6/6 · 652 |
+| Ornith 9B nothink | Hermes | 10/10 · 274 | 10/10 · 904† | 6/7 · 230 | 10/10 · 39 | 3/7 · 201 | 2/6 · 272‡ |
+| Qwen3-30B-A3B | OpenCode | 10/10 · 323 | 9/10 · 268 | 7/7 · 332 | 9/10 · 231 | 6/7 · 394 | 3/6 · 407 |
+| Qwen3-30B-A3B | Hermes | 9/10 · 332 | 9/10 · 325 | 7/7 · 353 | 9/10 · 210 | 6/7 · 341 | 3/6 · 902† |
+| Qwen3.6-35B-A3B | OpenCode | 10/10 · 556 | 0/10 · 367§ | 6/7 · 269 | 10/10 · 136 | 6/7 · 319 | 6/6 · 815 |
+| Qwen3.6-35B-A3B | Hermes | 10/10 · 224 | 10/10 · 233 | 6/7 · 242 | 10/10 · 83 | 6/7 · 282 | 6/6 · 242 |
+
+† hit the 900 s cap (files were already written and graded).
+‡ Hermes exited with an error.
+§ wrote correct code (10/10 when graded in place) to `~/.tmp/semver-test/`
+instead of the work dir; scored 0 because it ignored the requested location.
+
+Totals:
+
+| Model + client | Score | Mean time per task |
+|---|---:|---:|
+| Ornith 9B + OpenCode | 49/50 (98 %) | 400 s |
+| Ornith 9B nothink + OpenCode | 49/50 (98 %) | 392 s |
+| Qwen3.6 + Hermes | 48/50 (96 %) | 218 s |
+| Ornith 9B + Hermes | 47/50 (94 %) | 210 s |
+| Qwen3-30B + OpenCode | 44/50 (88 %) | 326 s |
+| Qwen3-30B + Hermes | 43/50 (86 %) | 410 s |
+| Ornith 9B nothink + Hermes | 41/50 (82 %) | 320 s |
+| Qwen3.6 + OpenCode | 38/50 (76 %; 38/40 without §) | 410 s |
+
+Findings:
+
+- On bounded tasks Ornith 9B (reasoning on) matches Qwen3.6. Larger total
+  parameters did not buy a better score here; long or knowledge-heavy tasks
+  were not measured.
+- Hermes is about 2× faster than OpenCode with the same model (smaller
+  startup prompt); on `extraccion` it is 3–4× faster.
+- Reasoning off (`ornith-1.5-9b-nothink`) is fine in OpenCode but loses
+  points on the harder tasks in Hermes. Keep reasoning on for Hermes.
+- Qwen3-30B-A3B is the weakest: 9/10 on `semver`/`extraccion` and it broke
+  the program's output in `refactor` with both clients.
+- Run-to-run variance is large (same model and task: 186 s vs 900 s). One run
+  per cell is not enough to rank close pairs.
+
+## Speculative decoding and Bonsai 27B — 2026-10-25
+
+Scripts: `scripts/bench-spec/`. Raw rows: `docs/evidence/2026-10-25-qwen36-speculative.jsonl`,
+`…-bonsai27b-q1_0.jsonl`. Same server flags as the router entry, port 8085, temperature 0.
+
+**Qwen3.6-35B-A3B, decode tok/s:**
+
+| Task | none | `ngram-mod` | `ngram-simple` |
+|---|---:|---:|---:|
+| Return an edited ~110-line file | 17.0 (72 s) | **27.4 (47 s)**, 1034/1088 accepted | 25.7 (50 s) |
+| New code (Tetris HTML, 2048 tok) | 18.8 | 17.6 | 14.1 |
+| Short chat | 15.2 | 18.8 | 19.4 |
+
+`ngram-mod` speeds up edits (the agent's common case) and costs ~6 % on new
+code; no draft model, no extra VRAM. The chat difference is noise (nothing was
+drafted). `draft-mtp` fails: this unsloth GGUF has no MTP layers. Registered as
+the separate router id `qwen3.6-35b-a3b-ud-iq4_xs-ngram`; through the router
+the edit task ran at 28.0 tok/s (1036/1088 accepted).
+
+**Bonsai 27B 1-bit** (`prism-ml/Bonsai-27B-gguf`, `Q1_0`, 3.8 GB, Qwen3.6-27B
+dense) on mainline llama.cpp Vulkan (build `0c1e570`), all layers on GPU:
+
+| | Bonsai 27B Q1_0 | Qwen3.6-35B-A3B (router flags) |
+|---|---:|---:|
+| VRAM loaded, `-c 32768` | 5.6 GB | 7.2 GB at `-c 65536` |
+| Prefill (llama-bench pp512 / pp4096) | 62.7 / 60.6 tok/s | ~240 tok/s |
+| Decode (tg128) | 13.5 tok/s | 17–19 tok/s |
+| Edit task, none / `ngram-mod` | 13.0 / 24.0 tok/s | 17.0 / 27.4 tok/s |
+
+It fits and works, but prefill is ~4× slower than Qwen3.6 (dense 27B on a
+card with no int-dot or matrix cores; there is no Vulkan `mul_mat_vec` kernel
+for `Q1_0` in this build). OpenCode's first request is ~18 K tokens: ~5 min
+just to read it. Not adopted; the ternary Bonsai 2 is the same dense 27B
+workload and needs PrismML's fork, so it was not pursued. Quality was not
+measured.
+
+## Image models on everyday tasks — 2026-10-25
+
+`scripts/bench-images-tasks.py`, through the router, seed 42, five tasks
+(product photo, portrait, logo with text, social illustration, landscape).
+Raw rows: `docs/evidence/2026-10-25-image-tasks.jsonl`; contact sheets (left to
+right: SD1.5 base, SD1.5 tuned, SD3.5 base 512, SD3.5 tuned 768) in
+`docs/evidence/2026-10-25-image-tasks/`.
+
+| | SD 1.5 | SD 3.5 Medium 512² | SD 3.5 Medium 768² |
+|---|---:|---:|---:|
+| Time per image | 33 s | 61–74 s | 135 s |
+| Readable text ("POLARIS") | no | yes | yes, odd glyphs |
+| Overall | strong red/magenta cast, odd shapes | good drafts; portrait came out soft | best: sharp, natural light |
+
+Use SD 3.5: 512² for drafts, 768² for finals. Two problems found:
+
+- The router only adds SD 1.5's anti-red negative prompt when the prompt has no
+  `<sd_cpp_extra_args>`. Any client that sends extra args (even just a seed)
+  loses it, which explains the red cast in both SD 1.5 rows here.
+- `steps` did not change generation time (SD 1.5: 33 s at 20 and at 30), so it
+  is probably not reaching sd-server. Not fixed yet.
+
+## Ornith 1.5 35B-A3B in the agent matrix — 2026-10-26
+
+Same tasks and graders as *Agent task matrix (4 rounds)* (R2–R4: semver,
+bugfix, extraccion, cli, refactor). OpenCode was upgraded to **2.1.2** between
+runs, so the OpenCode rows were rerun on 2.1.2 for both Ornith 35B and the
+current default (Qwen3.6 + ngram); `rondas.sh` now runs OpenCode with
+`--standalone` from the work dir (2.x dropped `--dir`). Raw rows:
+`docs/evidence/2026-10-26-matrix-*.jsonl`.
+
+Hidden-grader score · seconds:
+
+| Client | Model | semver | bugfix | extraccion | cli | refactor | Total | Time |
+|---|---|---|---|---|---|---|---:|---:|
+| OpenCode 2.1.2 | Ornith 35B-A3B | 10/10 · 329 | 7/7 · 253 | 10/10 · 112 | 6/7 · 342 | 6/6 · 512 | **39/40** | 1548 s |
+| OpenCode 2.1.2 | Qwen3.6 + ngram | 10/10 · 517 | 6/7 · 351 | 10/10 · 78 | 6/7 · 211 | 6/6 · 409 | 38/40 | 1566 s |
+| Hermes | Ornith 35B-A3B | 10/10 · 228 | 7/7 · 158 | 10/10 · 62 | 6/7 · 118 | 6/6 · 455 | **39/40** | 1021 s |
+| Hermes | Qwen3.6 (2026-10-25) | 10/10 · 233 | 6/7 · 242 | 10/10 · 83 | 6/7 · 282 | 6/6 · 242 | 38/40 | 1082 s |
+| Hermes | Ornith 9B (2026-10-25) | 10/10 · 243 | 6/7 · 239 | 10/10 · 46 | 5/7 · 251 | 6/6 · 113 | 37/40 | 892 s |
+
+Ornith 35B is the only model with `bugfix` 7/7 in both clients and matches
+Qwen3.6's total time; it reasons, so it spends more output tokens (refactor:
+6950 vs 4668 in OpenCode). One run per cell: a one-point gap is within the
+run-to-run variance measured on 2026-10-25. Short chat through the router:
+38.7 s (short) and 78.9 s (5.7 K-token prompt) because of the reasoning,
+against 7.6 s and 32.6 s for Qwen3.6 without reasoning.
+
+Since 2026-10-26 Ornith 35B-A3B is OpenCode's default model; Qwen3.6 stays as
+the fast fallback (no reasoning) and Hermes keeps Ornith 9B.
+
 ## Verified end-to-end
 
 Confirmed working in one session:

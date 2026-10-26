@@ -1,0 +1,14 @@
+### PENSANDO
+
+### RESPUESTA
+```python
+import re
+
+def parse_semver(s: str) -> tuple[int, int, int]:
+    if not (m := re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', s)):
+        raise ValueError(f"Invalid semver: {s}")
+    return tuple(int(x) for x in m.groups())
+```
+
+Valida estrictamente el formato `X.Y.Z` con `re.fullmatch` y lanza `ValueError` si no coincide.
+Convierte los grupos capturados a enteros y devuelve la tupla directamente.

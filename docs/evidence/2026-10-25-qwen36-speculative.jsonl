@@ -1,0 +1,10 @@
+{"cfg": "none", "prompt": "tetris", "s": 109.6, "tok_salida": 2048, "gen_tok_s": 18.8, "pp_tok_s": 40.2, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg": "none", "prompt": "editar", "s": 72.5, "tok_salida": 1126, "gen_tok_s": 17.0, "pp_tok_s": 194.9, "draft_n": null, "draft_aceptados": null, "renombro_ok": true}
+{"cfg": "none", "prompt": "chat", "s": 9.4, "tok_salida": 133, "gen_tok_s": 15.2, "pp_tok_s": 34.5, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg": "ngram-mod", "prompt": "tetris", "s": 116.9, "tok_salida": 2048, "gen_tok_s": 17.6, "pp_tok_s": 38.9, "draft_n": 179, "draft_aceptados": 24, "renombro_ok": null}
+{"cfg": "ngram-mod", "prompt": "editar", "s": 46.9, "tok_salida": 1126, "gen_tok_s": 27.4, "pp_tok_s": 204.4, "draft_n": 1088, "draft_aceptados": 1034, "renombro_ok": true}
+{"cfg": "ngram-mod", "prompt": "chat", "s": 7.7, "tok_salida": 133, "gen_tok_s": 18.8, "pp_tok_s": 35.7, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg": "ngram-simple", "prompt": "tetris", "s": 146.2, "tok_salida": 2048, "gen_tok_s": 14.1, "pp_tok_s": 40.1, "draft_n": 1154, "draft_aceptados": 108, "renombro_ok": null}
+{"cfg": "ngram-simple", "prompt": "editar", "s": 49.6, "tok_salida": 1126, "gen_tok_s": 25.7, "pp_tok_s": 204.7, "draft_n": 1152, "draft_aceptados": 1063, "renombro_ok": true}
+{"cfg": "ngram-simple", "prompt": "chat", "s": 7.5, "tok_salida": 133, "gen_tok_s": 19.4, "pp_tok_s": 38.7, "draft_n": null, "draft_aceptados": null, "renombro_ok": null}
+{"cfg":"mtp","error":"no arrancó","log":"0.03.530.725 E srv    load_model: failed to create MTP context\n0.03.530.729 I srv    operator(): operator(): cleaning up before exit...\n0.03.531.001 E srv  llama_server: exiting due to model loading error\n"}

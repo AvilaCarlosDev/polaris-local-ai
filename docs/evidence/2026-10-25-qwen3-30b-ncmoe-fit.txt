@@ -1,0 +1,5 @@
+ncmoe=44 VRAM=6292MiB entrada=9901tok lectura=150.8tok/s escritura=15.5tok/s
+ncmoe=40 VRAM=7743MiB entrada=9901tok lectura=151.9tok/s escritura=17.0tok/s
+ncmoe=37 VRAM=8116MiB entrada=9901tok lectura=100.6tok/s escritura=16.3tok/s
+ncmoe=34 VRAM=8122MiB entrada=9901tok lectura=101.0tok/s escritura=13.9tok/s
+RESTAURADO 15:56:56

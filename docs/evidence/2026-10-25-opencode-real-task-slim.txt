@@ -1,0 +1,27 @@
+inicio 16:28:20
+fin 16:33:03 | 283s | rc=0
+__pycache__
+semver.py
+test_semver.py
+...                                                                      [100%]
+3 passed in 0.00s
+[0m
+[0m$ [0mpython3 -m pytest -q
+...                                                                      [100%]
+3 passed in 0.01s
+[0m
+Todos los tests pasaron.
+prompt eval time: 1464 tok, 6957.96 ms, 210.41 tok/s
+eval time: 7 tok, 289.71 ms, 20.71 tok/s
+prompt eval time: 18231 tok, 189649.06 ms, 96.13 tok/s
+eval time: 20 tok, 1493.12 ms, 12.73 tok/s
+prompt eval time: 17 tok, 1119.93 ms, 15.18 tok/s
+eval time: 324 tok, 34059.45 ms, 9.48 tok/s
+prompt eval time: 18 tok, 1013.27 ms, 17.76 tok/s
+eval time: 465 tok, 33680.09 ms, 13.78 tok/s
+prompt eval time: 18 tok, 1025.90 ms, 17.55 tok/s
+eval time: 96 tok, 6903.11 ms, 13.76 tok/s
+prompt eval time: 31 tok, 1221.80 ms, 25.37 tok/s
+eval time: 7 tok, 441.71 ms, 13.58 tok/s
+
+[exited with code 0]

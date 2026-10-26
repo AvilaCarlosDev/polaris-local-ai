@@ -1,0 +1,37 @@
+JSON ok
+== CHAT
+{"modelo": "qwen3.6-35b-a3b-ud-iq4_xs", "prueba": "calentar", "total_s": 21.5, "primer_token_s": 21.5, "primera_respuesta_util_s": 21.5, "tok_entrada": 16, "tok_salida": 4, "chars_pensando": 0, "chars_respuesta": 2, "pp_tok_s": 19.4, "gen_tok_s": 17.8}
+{"modelo": "qwen3.6-35b-a3b-ud-iq4_xs", "prueba": "corta", "total_s": 7.6, "primer_token_s": 1.9, "primera_respuesta_util_s": 1.9, "tok_entrada": 53, "tok_salida": 110, "chars_pensando": 0, "chars_respuesta": 339, "pp_tok_s": 30.7, "gen_tok_s": 19.0}
+{"modelo": "qwen3.6-35b-a3b-ud-iq4_xs", "prueba": "larga", "total_s": 32.6, "primer_token_s": 24.0, "primera_respuesta_util_s": 24.0, "tok_entrada": 5726, "tok_salida": 163, "chars_pensando": 0, "chars_respuesta": 598, "pp_tok_s": 240.4, "gen_tok_s": 18.8}
+Qwen3.6-35B-A3B-UD-IQ4_XS.gguf --n-cpu-moe 30 --reasoning-budget 0 
+VRAM 7221 MiB
+cat: write error: Broken pipe
+Mem:           24576         734        3852           0       19989       23841
+== OPENCODE
+inicio 16:39:57
+fin 16:44:01 | 244s | rc=0
+__pycache__
+semver.py
+test_semver.py
+.......................                                                  [100%]
+23 passed in 0.02s
+23 passed in 0.02s
+[0m
+23 passed in 0.02s.
+**23 tests pasaron.** Los archivos creados son `semver.py` con la función `parse_semver` y `test_semver.py` con 23 casos (12 válidos parametrizados + 11 inválidos parametrizados).
+prompt eval time: 1508 tok, 8148.93 ms, 185.06 tok/s
+eval time: 14 tok, 675.39 ms, 19.25 tok/s
+prompt eval time: 18639 tok, 97049.27 ms, 192.06 tok/s
+eval time: 1134 tok, 65383.84 ms, 17.33 tok/s
+prompt eval time: 1168 tok, 8028.68 ms, 145.48 tok/s
+eval time: 274 tok, 15773.39 ms, 17.31 tok/s
+prompt eval time: 297 tok, 3899.46 ms, 76.16 tok/s
+eval time: 112 tok, 6418.40 ms, 17.29 tok/s
+prompt eval time: 456 tok, 4705.42 ms, 96.91 tok/s
+eval time: 199 tok, 11496.32 ms, 17.22 tok/s
+prompt eval time: 222 tok, 3498.31 ms, 63.46 tok/s
+eval time: 112 tok, 6470.44 ms, 17.15 tok/s
+prompt eval time: 151 tok, 3027.77 ms, 49.87 tok/s
+eval time: 69 tok, 3958.20 ms, 17.18 tok/s
+
+[exited with code 0]
