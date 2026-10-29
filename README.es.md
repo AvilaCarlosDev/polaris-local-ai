@@ -43,20 +43,20 @@ RX 580 — todavía muy común — queda fuera de su alcance.
 
 A esta pila eso no le importa. Corre sobre **Vulkan a través del driver RADV de
 Mesa**, que soporta Polaris perfectamente, y se apoya en **32 GB de RAM del
-sistema** para los modelos que no caben en 8 GB de VRAM. El resultado: seis
-modelos de texto/visión y dos modelos de imagen, todos accesibles a través de
-un único endpoint compatible con OpenAI.
+sistema** para los modelos que no caben en 8 GB de VRAM. El resultado: cinco
+modelos de texto/visión —hasta dos MoE de 35 B con 3 B activos— y dos modelos
+de imagen, todos accesibles a través de un único endpoint compatible con OpenAI.
 
 ## Qué obtienes
 
 | | |
 |---|---|
-| **Texto** | 6 modelos, desde un coder de 1.5 B hasta un MoE de 30 B, intercambiados bajo demanda |
+| **Texto** | 4 modelos, desde un coder de 1.5 B hasta Qwen3.6-35B-A3B y Ornith 1.5 35B-A3B (MoE, 3 B activos), intercambiados bajo demanda |
 | **Visión** | Qwen2.5-VL 3 B con su proyector mmproj |
 | **Imágenes** | SD 3.5 Medium y SD 1.5 a través de stable-diffusion.cpp, cargados bajo demanda y liberados antes de volver al texto |
-| **API** | Un endpoint compatible con OpenAI, una API key, 6 ids de texto/visión + generación de imágenes |
+| **API** | Un endpoint compatible con OpenAI, una API key, 7 ids de texto/visión + generación de imágenes |
 | **Selector** | `ia-models` lista todos los ids que sirve el router, agrupados por categoría |
-| **Agente** | Funciona como motor backend de Hermes Agent, con tools MCP |
+| **Agente** | Motor backend de OpenCode y Hermes Agent, evaluado con una matriz de tareas y correctores ocultos |
 | **Huella** | Corre en un LXC de Debian sobre un host Proxmox, o en bare metal |
 
 Los números medidos, los pasos de instalación, la guía de modelos y todo lo que
@@ -73,10 +73,43 @@ se rompió en el camino están en [`docs/`](docs/):
 - [LOCAL-STABILITY.md](docs/LOCAL-STABILITY.md) — límites de contexto, slots y clientes que mantienen estables a los agentes
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — los bugs que encontramos
 
+## Últimos resultados — 25 y 26 de octubre
+
+Medido en esta máquina, con las filas crudas en [`docs/evidence/`](docs/evidence/).
+Las tablas completas están en [BENCHMARKS.md](docs/BENCHMARKS.md).
+
+**Matriz de tareas de agente**: cinco tareas de código y extracción, calificadas
+por correctores ocultos, las mismas para todos los modelos:
+
+| Modelo | OpenCode 2.1.2 | Hermes | Uso actual |
+|---|---:|---:|---|
+| **Ornith 1.5 35B-A3B** | **39/40** | **39/40** | predeterminado de OpenCode; razona, así que el chat corto es más lento (38,7 s) |
+| Qwen3.6-35B-A3B (+ `ngram-mod`) | 38/40 | 38/40 | respaldo rápido, sin razonamiento (chat corto 7,6 s) |
+| Ornith 1.5 9B | — | 37/40 | predeterminado de Hermes |
+
+**Qwen3.6-35B-A3B en 8 GB:** 7,2 GB de VRAM con 64 K de contexto y
+`--n-cpu-moe 30`; lectura ~240 tok/s, escritura 18,8 tok/s, carga en frío 21,5 s.
+La misma tarea real de OpenCode (escribir `semver.py` con pruebas) bajó de
+**805 s** con la configuración vieja de Qwen3-30B a **244 s, con 23/23 pruebas en verde**.
+
+**Decodificación especulativa (`ngram-mod`):** devolver un archivo editado pasa
+de 17,0 a **27,4 tok/s**, sin modelo borrador ni VRAM extra.
+
+**Prompt de agente más chico:** la primera petición de OpenCode bajó de 32.463
+a 18.231 tokens recortando skills y herramientas del lado del cliente.
+
+**Imágenes:** SD 3.5 Medium a 512² para borradores (61–74 s) y a 768² para la
+versión final (135 s). SD 1.5 es más rápido (33 s), pero tiñe todo de rojo y magenta.
+
+Qwen2.5 7B, Qwen2.5 Coder 7B y Qwen3-30B-A3B se retiraron el 2026-10-26; los
+alias `general` y `code` ahora apuntan a Ornith 9B y Qwen3.6, así que los
+clientes viejos siguen funcionando. Ver [CHANGELOG.md](CHANGELOG.md).
+
 ## Cómo se siente en la práctica
 
-Medido en esta máquina, no estimado (corridas del 6 al 8 de octubre; la fila de imagen es de la
-comparativa del 22 de octubre). Mismo prompt, mismo modelo, dos estados:
+Medido en esta máquina, no estimado (corridas del 6 al 8 de octubre, con los modelos
+de esa semana; la fila de imagen es de la comparativa del 22 de octubre). Mismo
+prompt, mismo modelo, dos estados:
 
 | Situación | Tiempo total |
 |---|---:|
@@ -125,7 +158,7 @@ export IA_API_KEY=your-key
 curl http://127.0.0.1:8090/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $IA_API_KEY" \
-  -d '{"model":"qwen2.5-7b-instruct-q4_k_m",
+  -d '{"model":"ornith-1.5-9b-q4_k_m",
        "messages":[{"role":"user","content":"Hello"}]}'
 ```
 
@@ -141,9 +174,9 @@ ia-models --json        # lista cruda para scripts
 
 | Categoría | Ids | Cuándo usarla |
 |---|---|---|
-| `texto` | coder de 1.5 B → 7 B, más ornith 9 B | chat, resúmenes, código |
+| `texto` | Qwen2.5 Coder 1.5 B, Ornith 1.5 9 B (y una variante `-nothink`) | chat, resúmenes, código |
 | `vision` | Qwen2.5-VL 3 B | la tarea involucra una imagen |
-| `multitarea` | Qwen3-30B-A3B (3 B activos) | razonamiento largo y trabajo de agente |
+| `multitarea` | Ornith 1.5 35B-A3B, Qwen3.6-35B-A3B (y una variante `-ngram`), 3 B activos | trabajo de agente, prompts largos, edición de código |
 | `imagen` | SD 3.5 Medium, SD 1.5 | quieres una imagen |
 | `audio` | whisper medium | transcripción — servicio aparte, listado solo si está instalado |
 
@@ -161,6 +194,8 @@ clients/ia-imagen      CLI para generar una imagen y guardarla localmente
 clients/ia-models      CLI que lista todos los modelos, agrupados por categoría
 scripts/hero-demo.sh   El script detrás del video de arriba — córrelo tú mismo
 scripts/bench-*.py     Benchmarks reproducibles detrás de los números de docs/
+scripts/bench-agents/  Matriz de tareas de agente (OpenCode + Hermes) con correctores ocultos
+scripts/bench-spec/    Mediciones de decodificación especulativa y de Bonsai 27B
 systemd/               Las units que corren el stack
 docs/                  Notas de hardware, benchmarks, instalación, gotchas
 setup.sh               Instalador de una sola ejecución

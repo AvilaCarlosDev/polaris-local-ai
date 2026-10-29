@@ -140,7 +140,7 @@ Because the router serves every model behind one URL, changing the agent's
 model is a one-line edit — or, for an ad-hoc run:
 
 ```bash
-hermes chat -m qwen3-30b-a3b-instruct-2507-q4_k_m -q "your hard question"
+hermes chat -m ornith-1.5-35b-a3b-ad-iq4_xs -q "your hard question"
 ```
 
 Expect a swap pause on the first request to a model that is not already

@@ -54,7 +54,7 @@ Put the gguf files where `router.py` expects them:
 ```
 /opt/ia/models/        qwen2.5-*, mmproj-*, sd15-*, sd3.5_medium-*, t5xxl-*, clip_*
 /opt/ia/models/        ggml-medium.bin  (audio — optional, see below)
-/var/cache/ai/models/  Ornith-1.5-9B-*, Qwen_Qwen3-30B-A3B-*
+/var/cache/ai/models/  Ornith-1.5-9B-*, Qwen3.6-35B-A3B-*, Ornith-1.5-35B-A3B-*
 ```
 
 Or edit the `MODELS` table at the top of `router.py`. Source links are in
@@ -134,7 +134,7 @@ export IA_API_KEY="$(sudo cat /etc/ia/api-key)"
 curl http://127.0.0.1:8090/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $IA_API_KEY" \
-  -d '{"model":"qwen2.5-7b-instruct-q4_k_m",
+  -d '{"model":"ornith-1.5-9b-q4_k_m",
        "messages":[{"role":"user","content":"Say hello"}]}'
 ```
 
