@@ -33,7 +33,9 @@ agent #2+       ─ prefill cached, + CLI restart (~11.7 s) ─ ~21–25 s
 
 This is the single most impactful thing you can do.
 
-Measured with an identical request in both states:
+Measured with an identical request in both states (October 6–8; the 7 B
+models and Qwen3-30B-A3B were retired on 2026-10-26, see
+[BENCHMARKS.md](BENCHMARKS.md) for the current models):
 
 | Model | Warm | Cold | Cold is slower by |
 |---|---:|---:|---:|
@@ -117,8 +119,9 @@ measures the agent too.
 1. **One model per session.** Switching costs 7.9–38.5 s every time.
 2. **Check `/var/lib/llama-router/model`** before wondering why a request is slow.
 3. **Give the agent's first message ~2.5 minutes**, then expect ~21–25 s.
-4. **Do not force `-ngl`** on the 30 B MoE — it halves throughput
-   ([TROUBLESHOOTING.md](TROUBLESHOOTING.md)).
+4. **Do not force all layers onto the GPU** on a 35 B MoE. Keep attention on
+   the GPU and part of the experts on the CPU (`-ngl 99 --n-cpu-moe 30`), as
+   `router.py` does ([BENCHMARKS.md](BENCHMARKS.md)).
 5. **Pick models by task.** Fast ≠ correct for factual questions.
 6. **Judge the stack with `curl`, the agent with `hermes`.** Different
    numbers, different things being measured.
@@ -133,7 +136,7 @@ cat /var/lib/llama-router/model
 time curl -s http://192.168.10.126:8090/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $IA_API_KEY" \
-  -d '{"model":"qwen2.5-7b-instruct-q4_k_m","temperature":0,"max_tokens":300,
+  -d '{"model":"ornith-1.5-9b-q4_k_m","temperature":0,"max_tokens":300,
        "messages":[{"role":"user","content":"Explica que es una red neuronal. 250 palabras."}]}'
 
 # warm: run the exact same command again immediately — that is the difference

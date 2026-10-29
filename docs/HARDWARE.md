@@ -50,13 +50,16 @@ vendor SDK, no root-level driver install.
   the text model before generating, then stops image backends before resuming
   text, so their weights do not remain resident together.
 
-32 GB of RAM is what makes the 30 B MoE usable at all.
+32 GB of RAM is what makes the 35 B MoE models usable at all: ~16.5 GB of
+weights, with part of the experts held in system RAM.
 
 ## What this hardware can run
 
 Verified working — see [BENCHMARKS.md](BENCHMARKS.md) for numbers:
 
-- Text: 1.5 B, 3 B, 7 B, 9 B dense and 30 B MoE models
+- Text: 1.5 B and 9 B models, and 35 B MoE models with 3 B active
+  (Qwen3.6-35B-A3B, Ornith 1.5 35B-A3B). The 7 B models and Qwen3-30B-A3B
+  also ran here; they were retired on 2026-10-26.
 - Vision: Qwen2.5-VL 3 B with its mmproj projector
 - Images: SD 3.5 Medium and SD 1.5, generated at 512×512
 
